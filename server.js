@@ -21,7 +21,7 @@ const allowedOrigins = [
   "http://localhost:5173",
   "https://social-services-app.vercel.app",
   "https://delightful-pastelito-988e6f.netlify.app",
-  "https://admin-society.webseeder.tech/login",
+  "https://admin.mysocietyneeds.com",
   
 ];
 
