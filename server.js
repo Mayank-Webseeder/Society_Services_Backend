@@ -22,6 +22,7 @@ const allowedOrigins = [
   "https://social-services-app.vercel.app",
   "https://delightful-pastelito-988e6f.netlify.app",
   "https://admin.mysocietyneeds.com",
+  "https://admin-society.webseeder.tech",
   
 ];
 
