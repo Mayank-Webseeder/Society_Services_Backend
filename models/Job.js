@@ -67,7 +67,7 @@ const jobSchema = new mongoose.Schema({
 },
   status: {
     type: String,
-    enum: ["New", "Applied", "Ongoing", "Completed"],
+    enum: ["New", "Applied", "Ongoing", "Completed", "Expired"],
     default: "New",
 },
 });

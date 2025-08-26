@@ -26,6 +26,8 @@ const vendorSchema = new mongoose.Schema(
 
     idProof: {
       type: String,
+      required: false,
+      default: "null",
     },
 
     workingDays: {
