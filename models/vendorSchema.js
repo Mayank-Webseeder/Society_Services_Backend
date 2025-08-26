@@ -5,7 +5,7 @@ const vendorSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     businessName: { type: String, default: "Not Given" },
-    profilePicture: { type: String, default: "AWSDefaultVendor.jpg" },
+    profilePicture: { type: String, required: false, default: "null" },
     email: {
       type: String,
       required: true,
