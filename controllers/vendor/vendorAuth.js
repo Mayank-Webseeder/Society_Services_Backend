@@ -199,12 +199,15 @@ exports.createVendorProfile = async (req, res) => {
     if (req.body.location) updateData.location = req.body.location;
     if (req.body.paymentMethods) updateData.paymentMethods = req.body.paymentMethods;
     if (req.body.lastPayments) updateData.lastPayments = req.body.lastPayments;
-    if (req.idProofFile) updateData.idProof = req.idProofFile.path;
     if (req.body.businessName) updateData.businessName = req.body.businessName;
     if (req.body.experience) updateData.experience = Number(req.body.experience);
     if (req.body.phone) updateData.phone = req.body.phone;
 
-    updateData.idProof = "uploads/" + req.body.uniqueName;
+    // ✅ handle idProof only if sent
+    if (req.body.uniqueName) {
+      updateData.idProof = "uploads/" + req.body.uniqueName;
+    }
+
     updateData.isProfileCompleted = true;
 
     const updatedVendor = await Vendor.findByIdAndUpdate(vendorId, updateData, {
@@ -218,7 +221,7 @@ exports.createVendorProfile = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      idProof: req.idProofFile ? { ...req.idProofFile } : "No File Sent",
+      idProof: updateData.idProof ? updateData.idProof : "No File Sent",
       message: "Vendor profile updated successfully!!",
     });
   } catch (error) {
