@@ -87,12 +87,5 @@ router.post(
   applyToJob
 );
 
-// 🧑‍💼 Society gets all applicants for a job
-router.get(
-  "/jobs/:id/applicants",
-  authenticate,
-  authorizeRoles("society"),
-  getJobApplicants
-);
 
 module.exports = router;
