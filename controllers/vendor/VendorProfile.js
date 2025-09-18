@@ -1,5 +1,6 @@
 const Vendor = require("../../models/vendorSchema");
 const Application = require("../../models/Application");
+const Job = require("../../models/Job");
 
 
 exports.getMyApplications = async (req, res) => {
@@ -49,12 +50,40 @@ exports.getVendorProfile = async (req, res) => {
 // ✅ Vendor → Update Profile
 exports.updateVendorProfile = async (req, res) => {
   try {
-    const updated = await Vendor.findByIdAndUpdate(req.user.id, req.body, { new: true }).select(
-      "-password"
-    );
-    if (!updated) return res.status(404).json({ msg: "Vendor not found" });
+    // ✅ Allowed fields for update (whitelist)
+    const allowedFields = [
+      "name",
+      "businessName",
+      "profilePicture",
+      "phone",
+      "experience",
+      "services",
+      "address",
+      "workingDays",
+      "workingHours",
+      "location",
+      "paymentMethods"
+    ];
+
+    const updates = {};
+    for (const key of allowedFields) {
+      if (req.body[key] !== undefined) {
+        updates[key] = req.body[key];
+      }
+    }
+
+    const updated = await Vendor.findByIdAndUpdate(req.user.id, updates, {
+      new: true,
+    }).select("-password -subscription"); // ✅ subscription excluded
+
+    if (!updated) {
+      return res.status(404).json({ msg: "Vendor not found" });
+    }
+
     res.json({ msg: "Profile updated", vendor: updated });
   } catch (err) {
-    res.status(500).json({ msg: "Failed to update profile", error: err.message });
+    res
+      .status(500)
+      .json({ msg: "Failed to update profile", error: err.message });
   }
 };

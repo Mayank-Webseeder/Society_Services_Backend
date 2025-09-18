@@ -24,7 +24,7 @@ const {
 } = require("../middleware/roleBasedAuth");
 
 const {
-  rejectVendorApplication,
+  rejectApplication,
   getApplicantCount,
 } = require("../controllers/applicationController");
 
@@ -36,7 +36,7 @@ router.post(
   "/applications/:applicationId/reject",
   authenticate,
   authorizeRoles("society"),
-  rejectVendorApplication
+  rejectApplication
 );
 
 // 🏠 Society → Delete Job (manual delete)

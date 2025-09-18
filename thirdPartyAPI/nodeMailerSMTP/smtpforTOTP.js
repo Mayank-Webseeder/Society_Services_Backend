@@ -11,7 +11,7 @@ exports.sendOTP = async (vendorName, otp, vendorEmail, htmlpart = null) => {
   // vendorEmail = vendorEmail.split("+")[0] + "@" + vendorEmail.split("@")[1];
 
   const transporter = nodemailer.createTransport({
-    service: "hostinger",
+    
     host: "smtp.hostinger.com",
     port: 587,
     secure: false, // upgrade later with STARTTLS
@@ -19,6 +19,8 @@ exports.sendOTP = async (vendorName, otp, vendorEmail, htmlpart = null) => {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASSWORD, // Use environment variable for password
     },
+    logger: true,
+    debug: true, // include SMTP traffic in the logs
   });
   const mailOptions = {
     from: {

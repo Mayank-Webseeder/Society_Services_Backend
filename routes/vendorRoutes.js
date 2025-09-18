@@ -13,14 +13,11 @@ const {
 const {
   purchaseSubscription,
   checkSubscriptionStatus,
-  viewMySubscriptions,       // ✅ NEW (if implemented)
-  cancelCurrentSubscription, // ✅ NEW (if implemented)
   addServiceToSubscription   // ✅ ✅ Add this line
 } = require("../controllers/vendor/subscriptionController");
 
 const {
   applyToJob,
-  getJobApplicants,
 } = require("../controllers/applicationController"); // ✅ NEW
 
 const { validateOTP } = require("../middleware/thirdPartyServicesMiddleware");
@@ -87,5 +84,35 @@ router.post(
   applyToJob
 );
 
+router.get(
+  "/my-applications",
+  authenticate,
+  authorizeRoles("vendor"),
+  getMyApplications
+);
+
+// 🧑 Vendor → Dashboard Access
+router.get(
+  "/dashboard",
+  authenticate,
+  authorizeRoles("vendor"),
+  getVendorDashboard
+);
+
+// 🧑 Vendor → View Profile
+router.get(
+  "/profile",
+  authenticate,
+  authorizeRoles("vendor"),
+  getVendorProfile
+);
+
+// 🧑 Vendor → Update Profile
+router.put(
+  "/profile",
+  authenticate,
+  authorizeRoles("vendor"),
+  updateVendorProfile
+);
 
 module.exports = router;
