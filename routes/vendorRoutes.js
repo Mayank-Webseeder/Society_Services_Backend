@@ -2,117 +2,305 @@ const express = require("express");
 const router = express.Router();
 
 const {
-  loginVendor,
-  signupVendor,
-  createVendorProfile,
-  sendValidationOTP,
-  validateEmail,
-  forgetPassword,
+	loginVendor,
+	signupVendor,
+	createVendorProfile,
+	sendValidationOTP,
+	validateEmail,
+	forgetPassword,
 } = require("../controllers/vendor/vendorAuth");
 
-const {
-  purchaseSubscription,
-  checkSubscriptionStatus,
-  addServiceToSubscription   // ✅ ✅ Add this line
-} = require("../controllers/vendor/subscriptionController");
+const { purchaseSubscription, checkSubscriptionStatus, addServiceToSubscription } = require("../controllers/vendor/subscriptionController");
 
-const {
-  applyToJob,
-} = require("../controllers/applicationController"); // ✅ NEW
+const { applyToJob } = require("../controllers/applicationController");
 
 const { validateOTP } = require("../middleware/thirdPartyServicesMiddleware");
-const {
-  authenticate,
-  authorizeRoles,
-} = require("../middleware/roleBasedAuth");
+const { authenticate, authorizeRoles } = require("../middleware/roleBasedAuth");
 
 const uploadIDProof = require("../middleware/uploadIDProof");
 const { signUpNotVerified } = require("../controllers/notVerifiedAuth");
-const {
-  getMyApplications,
-  getVendorDashboard,
-  getVendorProfile,
-  updateVendorProfile,
-} = require("../controllers/vendor/vendorProfile");
+const { getMyApplications, getVendorDashboard, getVendorProfile, updateVendorProfile } = require("../controllers/vendor/vendorProfile");
 
-// 🔐 Auth & Profile
+/**
+ * @swagger
+ * tags:
+ *   name: Vendor
+ *   description: Vendor authentication, profile, subscription and application routes
+ */
+
+/**
+ * @swagger
+ * /vendor/signup:
+ *   post:
+ *     summary: Vendor signup
+ *     tags: [Vendor]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Vendor signed up successfully
+ */
 router.post("/signup", signupVendor);
+
+/**
+ * @swagger
+ * /vendor/login:
+ *   post:
+ *     summary: Vendor login
+ *     tags: [Vendor]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Vendor logged in successfully
+ */
 router.post("/login", loginVendor);
 
-router.put(
-  "/createProfile",
-  authenticate,
-  authorizeRoles("vendor"),
-  uploadIDProof,
-  createVendorProfile
-);
+/**
+ * @swagger
+ * /vendor/createProfile:
+ *   put:
+ *     summary: Create vendor profile
+ *     tags: [Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               idProof:
+ *                 type: string
+ *                 format: binary
+ *               companyName:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Vendor profile created
+ */
+router.put("/createProfile", authenticate, authorizeRoles("vendor"), uploadIDProof, createVendorProfile);
 
-// 📧 OTP & Email Verification
+/**
+ * @swagger
+ * /vendor/sendOtpEmailVerification:
+ *   post:
+ *     summary: Send OTP for email verification
+ *     tags: [Vendor]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: OTP sent
+ */
 router.post("/sendOtpEmailVerification", signUpNotVerified, sendValidationOTP);
 router.post("/sendOTP", sendValidationOTP);
+
+/**
+ * @swagger
+ * /vendor/validateEmail:
+ *   post:
+ *     summary: Validate email using OTP
+ *     tags: [Vendor]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               otp:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Email validated
+ */
 router.post("/validateEmail", validateOTP, validateEmail);
+
+/**
+ * @swagger
+ * /vendor/forgetPassword:
+ *   post:
+ *     summary: Reset password using OTP
+ *     tags: [Vendor]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               otp:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ */
 router.post("/forgetPassword", validateOTP, forgetPassword);
 
-// 💳 Subscription
-router.post(
-  "/subscribe",
-  authenticate,
-  authorizeRoles("vendor"),
-  purchaseSubscription
-);
+/**
+ * @swagger
+ * /vendor/subscribe:
+ *   post:
+ *     summary: Purchase subscription
+ *     tags: [Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Subscription purchased
+ */
+router.post("/subscribe", authenticate, authorizeRoles("vendor"), purchaseSubscription);
 
-router.get(
-  "/subscription-status",
-  authenticate,
-  authorizeRoles("vendor"),
-  checkSubscriptionStatus
-);
+/**
+ * @swagger
+ * /vendor/subscription-status:
+ *   get:
+ *     summary: Check subscription status
+ *     tags: [Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current subscription status
+ */
+router.get("/subscription-status", authenticate, authorizeRoles("vendor"), checkSubscriptionStatus);
 
-// 🔄 Add a new service (prorated charge)
-router.post(
-  "/add-service",
-  authenticate,
-  authorizeRoles("vendor"),
-  addServiceToSubscription
-);
+/**
+ * @swagger
+ * /vendor/add-service:
+ *   post:
+ *     summary: Add a service to subscription (prorated)
+ *     tags: [Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Service added
+ */
+router.post("/add-service", authenticate, authorizeRoles("vendor"), addServiceToSubscription);
 
-// 📩 Vendor applies to job (interest or quotation)
-router.post(
-  "/jobs/:id/apply",
-  authenticate,
-  authorizeRoles("vendor"),
-  applyToJob
-);
+/**
+ * @swagger
+ * /vendor/jobs/{id}/apply:
+ *   post:
+ *     summary: Apply to a job (interest or quotation)
+ *     tags: [Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Application submitted
+ */
+router.post("/jobs/:id/apply", authenticate, authorizeRoles("vendor"), applyToJob);
 
-router.get(
-  "/my-applications",
-  authenticate,
-  authorizeRoles("vendor"),
-  getMyApplications
-);
+/**
+ * @swagger
+ * /vendor/my-applications:
+ *   get:
+ *     summary: Get all applications by vendor
+ *     tags: [Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of vendor applications
+ */
+router.get("/my-applications", authenticate, authorizeRoles("vendor"), getMyApplications);
 
-// 🧑 Vendor → Dashboard Access
-router.get(
-  "/dashboard",
-  authenticate,
-  authorizeRoles("vendor"),
-  getVendorDashboard
-);
+/**
+ * @swagger
+ * /vendor/dashboard:
+ *   get:
+ *     summary: Vendor dashboard
+ *     tags: [Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Vendor dashboard data
+ */
+router.get("/dashboard", authenticate, authorizeRoles("vendor"), getVendorDashboard);
 
-// 🧑 Vendor → View Profile
-router.get(
-  "/profile",
-  authenticate,
-  authorizeRoles("vendor"),
-  getVendorProfile
-);
+/**
+ * @swagger
+ * /vendor/profile:
+ *   get:
+ *     summary: View vendor profile
+ *     tags: [Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Vendor profile data
+ */
+router.get("/profile", authenticate, authorizeRoles("vendor"), getVendorProfile);
 
-// 🧑 Vendor → Update Profile
-router.put(
-  "/profile",
-  authenticate,
-  authorizeRoles("vendor"),
-  updateVendorProfile
-);
+/**
+ * @swagger
+ * /vendor/profile:
+ *   put:
+ *     summary: Update vendor profile
+ *     tags: [Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               companyName:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Vendor profile updated
+ */
+router.put("/profile", authenticate, authorizeRoles("vendor"), updateVendorProfile);
 
 module.exports = router;

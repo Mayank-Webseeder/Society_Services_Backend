@@ -7,30 +7,151 @@ const {
   getJobById,
   getMyPostedJobs,
   filterJobsByTypeAndDate,
-  expireOldJobs // 🔁 NEW: controller to expire jobs older than 90 days
+  expireOldJobs
 } = require("../controllers/jobController");
 
 const { authMiddleware } = require("../middleware/authMiddleware");
 
-// 🔹 POST: Create Job
+/**
+ * @swagger
+ * tags:
+ *   name: Jobs
+ *   description: Job management routes
+ */
+
+/**
+ * @swagger
+ * /jobs/create:
+ *   post:
+ *     summary: Create a new job
+ *     tags: [Jobs]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               type:
+ *                 type: string
+ *               location:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Job created successfully
+ *       400:
+ *         description: Bad request
+ */
 router.post("/create", authMiddleware, createJob);
 
-// 🔹 GET: Jobs near vendor
+/**
+ * @swagger
+ * /jobs/nearby:
+ *   get:
+ *     summary: Get jobs near vendor location
+ *     tags: [Jobs]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of nearby jobs
+ */
 router.get("/nearby", authMiddleware, getNearbyJobs);
 
-// 🔹 GET: View Single Job Details (Society/Vendor)
+/**
+ * @swagger
+ * /jobs/{id}:
+ *   get:
+ *     summary: Get job details by ID
+ *     tags: [Jobs]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Job ID
+ *     responses:
+ *       200:
+ *         description: Job details
+ *       404:
+ *         description: Job not found
+ */
 router.get("/:id", authMiddleware, getJobById);
 
-// 🔹 GET: Get all jobs posted by the society
+/**
+ * @swagger
+ * /jobs/my/posted:
+ *   get:
+ *     summary: Get all jobs posted by the authenticated society
+ *     tags: [Jobs]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of jobs
+ */
 router.get("/my/posted", authMiddleware, getMyPostedJobs);
 
-// 🔹 Optional: Filter Jobs by type/date (Admin or analytics)
+/**
+ * @swagger
+ * /jobs/filter:
+ *   get:
+ *     summary: Filter jobs by type or date
+ *     tags: [Jobs]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: type
+ *         in: query
+ *         schema:
+ *           type: string
+ *       - name: startDate
+ *         in: query
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - name: endDate
+ *         in: query
+ *         schema:
+ *           type: string
+ *           format: date
+ *     responses:
+ *       200:
+ *         description: Filtered jobs list
+ */
 router.get("/filter", authMiddleware, filterJobsByTypeAndDate);
 
-// 🔁 POST: Expire jobs older than 90 days
-router.post("/expire-old", expireOldJobs); // No auth — protect this in cron or admin later
+/**
+ * @swagger
+ * /jobs/expire-old:
+ *   post:
+ *     summary: Expire jobs older than 90 days
+ *     tags: [Jobs]
+ *     responses:
+ *       200:
+ *         description: Expired old jobs
+ */
+router.post("/expire-old", expireOldJobs);
 
-// 🔹 Health check
+/**
+ * @swagger
+ * /jobs/test:
+ *   get:
+ *     summary: Health check for jobs route
+ *     tags: [Jobs]
+ *     responses:
+ *       200:
+ *         description: Job route working
+ */
 router.get("/test", (req, res) => {
   res.send("Job route working");
 });
