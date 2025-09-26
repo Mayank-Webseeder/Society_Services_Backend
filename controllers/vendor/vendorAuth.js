@@ -191,7 +191,7 @@ exports.createVendorProfile = async (req, res) => {
 		if (req.body.paymentMethods) updateData.paymentMethods = req.body.paymentMethods;
 		if (req.body.lastPayments) updateData.lastPayments = req.body.lastPayments;
 		if (req.body.businessName) updateData.businessName = req.body.businessName;
-		if (req.body.experience) updateData.experience = req.body.experience;
+		if (req.body.experience) updateData.experience = req.body.experience+" years";
 		if (req.body.phone) updateData.phone = req.body.phone;
 
 		// ✅ handle idProof only if sent
