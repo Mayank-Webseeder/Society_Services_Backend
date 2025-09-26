@@ -198,6 +198,9 @@ exports.createVendorProfile = async (req, res) => {
 		if (req.body.uniqueName) {
 			updateData.idProof = "uploads/" + req.body.uniqueName;
 		}
+		if (req.body.paymentSuccess) {
+			updateData.isSubscribed = true; // mark subscription as true
+		}
 
 		updateData.isProfileCompleted = true;
 
@@ -213,7 +216,7 @@ exports.createVendorProfile = async (req, res) => {
 		res.status(201).json({
 			success: true,
 			idProof: updateData.idProof ? updateData.idProof : "No File Sent",
-			message: "Vendor profile updated successfully!!",
+			message: "Vendor profile created successfully!!",
 		});
 	} catch (error) {
 		res.status(500).json({
