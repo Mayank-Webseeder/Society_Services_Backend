@@ -46,8 +46,8 @@ const vendorSchema = new mongoose.Schema(
     },
 
     experience: {
-      type: Number,
-      default: 0,
+      type: String,
+      default: ">1 years",
     },
 
     phone: { type: String, default: "Not Given" },
