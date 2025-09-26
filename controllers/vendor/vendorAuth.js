@@ -213,6 +213,9 @@ exports.createVendorProfile = async (req, res) => {
 		if (req.body.uniqueName) {
 			updateData.idProof = "uploads/" + req.body.uniqueName;
 		}
+		if (req.body.paymentSuccess) {
+			updateData.isSubscribed = true; // mark subscription as true
+		}
 
 		updateData.isProfileCompleted = true;
 
@@ -251,13 +254,12 @@ exports.createVendorProfile = async (req, res) => {
 				expiresAt: subscriptionData.endDate,
 			};
 			await updatedVendor.save();
-			await updatedVendor.save();
+			
 		}
 
 		res.status(201).json({
 			success: true,
-			idProof: updateData.idProof ? updateData.idProof : "No File Sent",
-			message: subscriptionData
+			idProof: updateData.idProof ? updateData.idProof : "No File Sent",message: subscriptionData
 				? "Vendor profile created successfully with subscription!"
 				: "Vendor profile created successfully!",
 			subscription: subscriptionData || null,
