@@ -213,7 +213,7 @@ exports.createVendorProfile = async (req, res) => {
 		res.status(201).json({
 			success: true,
 			idProof: updateData.idProof ? updateData.idProof : "No File Sent",
-			message: "Vendor profile updated successfully!!",
+			message: "Vendor profile created successfully!!",
 		});
 	} catch (error) {
 		res.status(500).json({
