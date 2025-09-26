@@ -254,15 +254,18 @@ exports.createVendorProfile = async (req, res) => {
 				expiresAt: subscriptionData.endDate,
 			};
 			await updatedVendor.save();
-			
+			return res.status(201).json({
+				success: true,
+				idProof: updateData.idProof || "No File Sent",
+				message: "Vendor profile created successfully with subscription!",
+				subscription: subscriptionData,
+			});
 		}
 
-		res.status(201).json({
+		return res.status(201).json({
 			success: true,
-			idProof: updateData.idProof ? updateData.idProof : "No File Sent",message: subscriptionData
-				? "Vendor profile created successfully with subscription!"
-				: "Vendor profile created successfully!",
-			subscription: subscriptionData || null,
+			idProof: updateData.idProof || "No File Sent",
+			message: "Vendor profile created successfully!",
 		});
 	} catch (error) {
 		res.status(500).json({
