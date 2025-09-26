@@ -19,7 +19,7 @@ const { authenticate, authorizeRoles } = require("../middleware/roleBasedAuth");
 
 const uploadIDProof = require("../middleware/uploadIDProof");
 const { signUpNotVerified } = require("../controllers/notVerifiedAuth");
-const { getMyApplications, getVendorDashboard, getVendorProfile, updateVendorProfile } = require("../controllers/vendor/vendorProfile");
+const { getMyApplications, getVendorDashboard, getVendorProfile, updateVendorProfile } = require("../controllers/vendor/VendorProfile");
 
 /**
  * @swagger
