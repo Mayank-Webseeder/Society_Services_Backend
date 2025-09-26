@@ -198,6 +198,9 @@ exports.createVendorProfile = async (req, res) => {
 		if (req.body.uniqueName) {
 			updateData.idProof = "uploads/" + req.body.uniqueName;
 		}
+		if (req.body.paymentSuccess) {
+			updateData.isSubscribed = true; // mark subscription as true
+		}
 
 		updateData.isProfileCompleted = true;
 
