@@ -2,7 +2,7 @@ const Vendor = require("../../models/vendorSchema");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const nonVerified = require("../../models/notVerified");
-
+const Subscription = require("../../models/Subscription");
 const { sendOTP, generate4DigitOtp } = require("../../thirdPartyAPI/nodeMailerSMTP/smtpforTOTP");
 
 // ✅ VENDOR SIGNUP
@@ -182,19 +182,34 @@ exports.createVendorProfile = async (req, res) => {
 		const vendorId = req.user.id;
 		const updateData = {};
 
+		// Update fields
 		if (req.body.name) updateData.name = req.body.name;
-		if (req.body.address) updateData.address = req.body.address;
-		if (req.body.services) updateData.services = req.body.services;
-		if (req.body.workingDays) updateData.workingDays = req.body.workingDays;
-		if (req.body.workingHours) updateData.workingHours = req.body.workingHours;
+		if (req.body.businessName) updateData.businessName = req.body.businessName;
+		if (req.body.experience) updateData.experience = req.body.experience + " years";
+		if (req.body.phone) updateData.phone = req.body.phone;
 		if (req.body.location) updateData.location = req.body.location;
 		if (req.body.paymentMethods) updateData.paymentMethods = req.body.paymentMethods;
 		if (req.body.lastPayments) updateData.lastPayments = req.body.lastPayments;
-		if (req.body.businessName) updateData.businessName = req.body.businessName;
-		if (req.body.experience) updateData.experience = req.body.experience+" years";
-		if (req.body.phone) updateData.phone = req.body.phone;
 
-		// ✅ handle idProof only if sent
+		// Working days
+		const daysMap = {
+			Mon: "monday",
+			Tue: "tuesday",
+			Wed: "wednesday",
+			Thu: "thursday",
+			Fri: "friday",
+			Sat: "saturday",
+			Sun: "sunday",
+		};
+		if (req.body.workingDays) {
+			updateData.workingDays = {};
+			req.body.workingDays.forEach((day) => {
+				const key = daysMap[day];
+				if (key) updateData.workingDays[key] = true;
+			});
+		}
+
+		// idProof
 		if (req.body.uniqueName) {
 			updateData.idProof = "uploads/" + req.body.uniqueName;
 		}
@@ -204,6 +219,7 @@ exports.createVendorProfile = async (req, res) => {
 
 		updateData.isProfileCompleted = true;
 
+		// ✅ First update the vendor
 		const updatedVendor = await Vendor.findByIdAndUpdate(vendorId, updateData, {
 			new: true,
 			runValidators: true,
@@ -213,10 +229,43 @@ exports.createVendorProfile = async (req, res) => {
 			return res.status(404).json({ success: false, message: "Vendor not found" });
 		}
 
-		res.status(201).json({
+		// ✅ Then create subscription if paymentSuccess
+		let subscriptionData = null;
+		if (req.body.paymentSuccess === true || req.body.paymentSuccess === "true") {
+			subscriptionData = await Subscription.create({
+				vendor: updatedVendor._id,
+				vendorName: updatedVendor.name,
+				vendorReferenceId: updatedVendor.vendorReferenceId,
+				planPrice: 999,
+				startDate: new Date(),
+				endDate: new Date(Date.now() + 12 * 30 * 24 * 60 * 60 * 1000), // 360 days
+				paymentStatus: "Paid",
+				subscriptionStatus: "Active",
+				isActive: true,
+				services: (req.body.services || []).map((service) => ({
+					name: service,
+					proratedPrice: 999,
+				})),
+			});
+
+			// Link subscription to vendor
+			updatedVendor.subscription = {
+				isActive: true,
+				expiresAt: subscriptionData.endDate,
+			};
+			await updatedVendor.save();
+			return res.status(201).json({
+				success: true,
+				idProof: updateData.idProof || "No File Sent",
+				message: "Vendor profile created successfully with subscription!",
+				subscription: subscriptionData,
+			});
+		}
+
+		return res.status(201).json({
 			success: true,
-			idProof: updateData.idProof ? updateData.idProof : "No File Sent",
-			message: "Vendor profile created successfully!!",
+			idProof: updateData.idProof || "No File Sent",
+			message: "Vendor profile created successfully!",
 		});
 	} catch (error) {
 		res.status(500).json({
