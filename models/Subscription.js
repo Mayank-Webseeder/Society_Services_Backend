@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-
+const preDefinedServices = require("../constants/vendorRoles");
 const subscriptionSchema = new mongoose.Schema(
   {
     vendor: {
@@ -53,15 +53,7 @@ const subscriptionSchema = new mongoose.Schema(
         name: {
           type: String,
           required: true,
-          enum: [
-            "Plumber",
-            "Electrician",
-            "Carpenter",
-            "Painter",
-            "AC Technician",
-            "CCTV Installer",
-            // Add more roles here if needed
-          ],
+          enum: preDefinedServices,
         },
         addedOn: {
           type: Date,

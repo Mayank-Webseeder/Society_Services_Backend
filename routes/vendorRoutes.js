@@ -105,7 +105,7 @@ router.post("/login", loginVendor);
 router.put("/createProfile", authenticate, authorizeRoles("vendor"), uploadIDProof, createVendorProfile);
 
 /**
- * @swagger
+//  * @swagger
  * /vendor/sendOtpEmailVerification:
  *   post:
  *     summary: Send OTP for email verification
@@ -209,7 +209,7 @@ router.get("/subscription-status", authenticate, authorizeRoles("vendor"), check
  *     summary: Add a service to subscription (prorated)
  *     tags: [Vendor]
  *     security:
- *       - bearerAuth: []
+//  *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Service added
