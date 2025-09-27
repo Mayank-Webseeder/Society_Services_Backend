@@ -3,10 +3,17 @@ const Application = require("../models/Application");
 const Vendor = require("../models/vendorSchema");
 const Notification = require("../models/Notification");
 const { sendJobNotification } = require("../utils/sendJobNotification");
+// const Society = require("../models/societySchema");
 
 // 1. Society Creates a Job
 exports.createJob = async (req, res) => {
   try {
+    if (req.user.role !== "society") {
+      return res.status(403).json({
+        success: false,
+        msg: "Not authorized. Only societies can post jobs.",
+      });
+    }
     const {
       title,
       type,
@@ -18,7 +25,7 @@ exports.createJob = async (req, res) => {
       scheduledFor,
       quotationRequired,
     } = req.body;
-
+    
     const { latitude, longitude, googleMapLink } = location;
 
     const newJob = new Job({
@@ -46,30 +53,30 @@ exports.createJob = async (req, res) => {
     await newJob.save();
 
     // Notify all nearby, subscribed vendors matching role
-    const nearbyVendors = await Vendor.find({
-      services: type,
-      isSubscribed: true,
-      location: {
-        $nearSphere: {
-          $geometry: {
-            type: "Point",
-            coordinates: [parseFloat(longitude), parseFloat(latitude)],
-          },
-          $maxDistance: 20000,
-        },
-      },
-    });
+    // const nearbyVendors = await Vendor.find({
+    //   services: type,
+    //   isSubscribed: true,
+    //   location: {
+    //     $nearSphere: {
+    //       $geometry: {
+    //         type: "Point",
+    //         coordinates: [parseFloat(longitude), parseFloat(latitude)],
+    //       },
+    //       $maxDistance: 20000,
+    //     },
+    //   },                  //SEND NOTIFICATION IS GIVING ERROR
+    // });
 
-    for (const vendor of nearbyVendors) {
-      await sendJobNotification(vendor, newJob);
+    // for (const vendor of nearbyVendors) {
+    //   await sendJobNotification(vendor, newJob);
 
-      await Notification.create({
-        userId: vendor._id,
-        title: `New ${type} job posted`,
-        message: `${title} - ${details}`,
-        link: `/vendor/jobs/${newJob._id}`,
-      });
-    }
+    //   await Notification.create({
+    //     userId: vendor._id,
+    //     title: `New ${type} job posted`,
+    //     message: `${title} - ${details}`,
+    //     link: `/vendor/jobs/${newJob._id}`,
+    //   });
+    // }
 
     res.status(201).json({
       msg: "Job posted successfully",
