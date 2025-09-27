@@ -100,47 +100,48 @@ exports.sendValidationOTP = async (req, res) => {
 		const { email } = req.body;
 		const generatedOTP = await generate4DigitOtp(email);
 
-		if (req.notVerified) {
-			const response = await sendOTP("no Name", generatedOTP, email);
-			if (response) {
-				const notVerifiedVendor = await nonVerified.findOne({ email });
-				if (notVerifiedVendor) {
-					notVerifiedVendor.otp = generatedOTP;
-					notVerifiedVendor.lastOTPSend = new Date();
-					await notVerifiedVendor.save();
-				} else {
-					await nonVerified.create({ email, otp: generatedOTP });
-				}
-				return res.json({ status: false, msg: "Not Verified Vendor OTP Sent" });
-			} else {
-				return res.status(401).json({ status: false, msg: "Email not sent" });
-			}
-		} else {
-			// forgot password
-			const updatedVendor = await Vendor.findOneAndUpdate(
-				{ email },
-				{ $set: { otp: generatedOTP } },
-				{ new: true }
-			).select("name");
+		// Already verified vendor (skip OTP)
+		if (req.alreadyVerified) {
+			return res.json({
+				status: true,
+				msg: "Vendor already verified. No OTP needed.",
+			});
+		}
 
-			if (!updatedVendor) {
+		if (req.notVerified) {
+			// Signup flow: update NotVerified schema
+			const notVerifiedVendor = await nonVerified.findOne({ email });
+			if (notVerifiedVendor) {
+				notVerifiedVendor.otp = generatedOTP;
+				notVerifiedVendor.lastOTPSend = new Date();
+				await notVerifiedVendor.save();
+			} else {
+				await notVerifiedVendor.create({ email, otp: generatedOTP });
+			}
+
+			await sendOTP("no Name", generatedOTP, email);
+
+			return res.json({
+				status: true,
+				msg: "OTP sent to unverified vendor email.",
+			});
+		} else {
+			// Post-signup / forgot password: update Vendor schema
+			const vendor = await Vendor.findOneAndUpdate({ email }, { $set: { otp: generatedOTP } }, { new: true }).select(
+				"name"
+			);
+
+			if (!vendor) {
 				return res.status(404).json({ status: false, msg: "Vendor not found" });
 			}
 
-			const response = await sendOTP(updatedVendor.name, generatedOTP, email);
+			await sendOTP(vendor.name, generatedOTP, email);
 
-			if (response) {
-				res.json({
-					status: true,
-					msg: "OTP sent to your email",
-					vendorName: updatedVendor.name,
-				});
-			} else {
-				res.status(500).json({
-					status: false,
-					msg: "Failed to send OTP, please try again later",
-				});
-			}
+			return res.json({
+				status: true,
+				msg: "OTP sent to your email.",
+				vendorName: vendor.name,
+			});
 		}
 	} catch (err) {
 		res.status(503).json({ msg: "Server error", error: err.message });
@@ -150,29 +151,15 @@ exports.sendValidationOTP = async (req, res) => {
 // ✅ VALIDATE EMAIL AFTER OTP
 exports.validateEmail = async (req, res) => {
 	try {
-		const { email } = req.body;
-
-		if (res.otpValidationResult) {
-			const vendor = await Vendor.findOne({ email });
-			vendor.otp = null;
-			vendor.isVerified = true;
-			await vendor.save();
-
-			res.json({
-				status: true,
-				msg: "Email validated successfully",
-			});
-		} else if (res.nonVerifiedUserValid) {
-			res.json({
-				status: true,
-				email,
-				msg: "New Vendor Verified, please proceed with signup.",
-			});
-		} else {
-			return res.status(400).json({ status: false, msg: "Invalid OTP" });
+		if (res.nonVerifiedUserValid) {
+			return res.json({ status: true, msg: "New Vendor verified, proceed with signup" });
 		}
-	} catch (error) {
-		res.status(500).json({ msg: "Server error", error: error.message });
+		if (res.otpValidationResult) {
+			return res.json({ status: true, msg: "Vendor email verified successfully" });
+		}
+		res.status(400).json({ status: false, msg: "Invalid OTP" });
+	} catch (err) {
+		res.status(500).json({ status: false, msg: "Server error", error: err.message });
 	}
 };
 
@@ -190,7 +177,10 @@ exports.createVendorProfile = async (req, res) => {
 		if (req.body.location) updateData.location = req.body.location;
 		if (req.body.paymentMethods) updateData.paymentMethods = req.body.paymentMethods;
 		if (req.body.lastPayments) updateData.lastPayments = req.body.lastPayments;
-
+		if (req.body.services) {
+			const vendor = await Vendor.findById(vendorId).select("services");
+			updateData.services = Array.from(new Set([...(vendor.services || []), ...req.body.services]));
+		}
 		// Working days
 		const daysMap = {
 			Mon: "monday",

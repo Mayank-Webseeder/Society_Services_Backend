@@ -1,56 +1,50 @@
 const Vendor = require("../models/vendorSchema");
-const nonVerified = require("../models/notVerified");
+const NotVerified = require("../models/notVerified");
+const notVerified = NotVerified; // Fix naming inconsistency
 exports.validateOTP = async (req, res, next) => {
   try {
     const { email, otp } = req.body;
 
-    const vendor = await Vendor.findOne({ email }).select("otp");
-    if (!vendor) {
-      var nonVerifiedVendor = await nonVerified
-        .findOne({ email })
-        .select("otp lastOTPSend isVerified");
-      res.nonVerifiedUserValid = false;
-      if (!nonVerifiedVendor) {
-        return res.status(400).json({ msg: "Vendor not found" });
-      } else if (nonVerifiedVendor.isVerified) {
-        return res
-          .status(204)
-          .json({ success: true, msg: "Already Verified Please make signup" });
+    // First check NotVerified collection
+    const notVerifiedUser = await notVerified.findOne({ email });
+    if (notVerifiedUser) {
+      if (notVerifiedUser.isVerified) {
+        return res.status(200).json({ status: true, msg: "Already verified, proceed to signup" });
       }
 
-      const lastOtpSendTimeInMiliSeconds =
-        nonVerifiedVendor.lastOTPSend.getTime();
-      if (lastOtpSendTimeInMiliSeconds + 60 * 60 * 1000 > Date.now()) {
-        console.log(nonVerifiedVendor);
-        if (nonVerifiedVendor.otp != otp) {
-          // res.nonVerifiedUserValid = false;
-          return res.status(400).json({ msg: "Invalid OTP" });
-        }
-
-        res.nonVerifiedUserValid = true;
-        nonVerifiedVendor.isVerified = true;
-        nonVerifiedVendor.otp = null;
-        await nonVerifiedVendor.save();
-
-        next();
+      const otpAge = Date.now() - notVerifiedUser.lastOTPSend.getTime();
+      if (otpAge > 60 * 60 * 1000) {
+        return res.status(400).json({ status: false, msg: "OTP expired, request new one" });
       }
-      // res.nonVerifiedUserValid = false;
 
-      return res.status(400).json({
-        sucess: false,
-        msg: "OTP is valid for 1 hour, please try again later",
-      });
-    } else {
-      if (vendor.otp != otp) {
-        res.otpValidationResult = false;
-      } else {
-        res.otpValidationResult = true;
+      if (notVerifiedUser.otp !== otp) {
+        return res.status(400).json({ status: false, msg: "Invalid OTP" });
       }
+
+      // OTP is correct
+      notVerifiedUser.isVerified = true;
+      notVerifiedUser.otp = null;
+      await notVerifiedUser.save();
+
+      res.nonVerifiedUserValid = true;
+      return next();
     }
 
+    // If not in NotVerified, check Vendor
+    const vendor = await Vendor.findOne({ email }).select("otp isVerified");
+    if (!vendor) return res.status(404).json({ status: false, msg: "Vendor not found" });
+
+    if (vendor.otp !== otp) {
+      return res.status(400).json({ status: false, msg: "Invalid OTP" });
+    }
+
+    vendor.isVerified = true;
+    vendor.otp = null;
+    await vendor.save();
+
+    res.otpValidationResult = true;
     next();
   } catch (err) {
-    res.otpValidationResult = false;
-    res.validationError = err;
+    res.status(500).json({ status: false, msg: "Server error", error: err.message });
   }
 };
