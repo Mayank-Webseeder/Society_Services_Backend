@@ -59,7 +59,7 @@ exports.getBlacklistedVendors = async (req, res) => {
 // ✅ Get all vendors (optional utility route)
 exports.getAllVendors = async (req, res) => {
   try {
-    const vendors = await Vendor.find().select("name email phone role isApproved isBlacklisted");
+    const vendors = await Vendor.find().select("name email contactNumber idProof role isApproved isBlacklisted ");
     res.json(vendors);
   } catch (err) {
     res.status(500).json({ msg: "Failed to fetch vendors", error: err.message });

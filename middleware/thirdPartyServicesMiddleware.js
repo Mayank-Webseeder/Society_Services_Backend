@@ -3,22 +3,32 @@ const NotVerified = require("../models/notVerified");
 const notVerified = NotVerified; // Fix naming inconsistency
 exports.validateOTP = async (req, res, next) => {
   try {
-    const { email, otp } = req.body;
-
+    const { contactNumber, otp } = req.body;
+    if (!contactNumber || !otp) {
+      return res
+        .status(400)
+        .json({ status: false, msg: "Contact number and OTP are required" });
+    }
     // First check NotVerified collection
-    const notVerifiedUser = await notVerified.findOne({ email });
+    const notVerifiedUser = await notVerified.findOne({ contactNumber });
     if (notVerifiedUser) {
       if (notVerifiedUser.isVerified) {
-        return res.status(200).json({ status: true, msg: "Already verified, proceed to signup" });
+        return res
+          .status(200)
+          .json({ status: true, msg: "Already verified, proceed to signup" });
       }
 
       const otpAge = Date.now() - notVerifiedUser.lastOTPSend.getTime();
       if (otpAge > 60 * 60 * 1000) {
-        return res.status(400).json({ status: false, msg: "OTP expired, request new one" });
+        return res
+          .status(400)
+          .json({ status: false, msg: "OTP expired, request new one" });
       }
 
       if (notVerifiedUser.otp !== otp) {
-        return res.status(400).json({ status: false, msg: "Invalid OTP" });
+        return res
+          .status(400)
+          .json({ status: false, msg: "Invalid OTP" });
       }
 
       // OTP is correct
@@ -31,11 +41,16 @@ exports.validateOTP = async (req, res, next) => {
     }
 
     // If not in NotVerified, check Vendor
-    const vendor = await Vendor.findOne({ email }).select("otp isVerified");
-    if (!vendor) return res.status(404).json({ status: false, msg: "Vendor not found" });
+    const vendor = await Vendor.findOne({ contactNumber }).select("otp isVerified");
+    if (!vendor)
+      return res
+        .status(404)
+        .json({ status: false, msg: "Vendor not found" });
 
     if (vendor.otp !== otp) {
-      return res.status(400).json({ status: false, msg: "Invalid OTP" });
+      return res
+        .status(400)
+        .json({ status: false, msg: "Invalid OTP" });
     }
 
     vendor.isVerified = true;
@@ -45,6 +60,8 @@ exports.validateOTP = async (req, res, next) => {
     res.otpValidationResult = true;
     next();
   } catch (err) {
-    res.status(500).json({ status: false, msg: "Server error", error: err.message });
+    res
+      .status(500)
+      .json({ status: false, msg: "Server error", error: err.message });
   }
 };

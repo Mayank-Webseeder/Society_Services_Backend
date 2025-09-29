@@ -8,7 +8,7 @@ const vendorSchema = new mongoose.Schema(
     profilePicture: { type: String, required: false, default: "null" },
     email: {
       type: String,
-      required: true,
+      // required: true,
       unique: true,
     },
     password: { type: String, required: true },
@@ -49,8 +49,18 @@ const vendorSchema = new mongoose.Schema(
       type: String,
       default: ">1 years",
     },
-
-    phone: { type: String, default: "Not Given" },
+    gender: {
+      type: String,
+      required: true,
+      enum:["Male","Female","Prefer not to say"],
+    },
+    contactNumber: {
+  type: String,
+  required: true,
+  unique: true,
+  trim: true,
+  match: [/^\+?\d{7,15}$/, "Please provide a valid contact number"]
+},
 
     // 🔧 Restricting services to predefined roles
     services: [

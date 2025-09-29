@@ -8,14 +8,16 @@ const { sendOTP, generate4DigitOtp } = require("../../thirdPartyAPI/nodeMailerSM
 // ✅ VENDOR SIGNUP
 exports.signupVendor = async (req, res) => {
 	try {
-		const { name, email, password } = req.body;
+		const { name, contactNumber, password } = req.body;
 
-		const existing = await nonVerified.findOne({ email }).select("isVerified");
+		// Check if the user has verified their contact number
+		const existing = await nonVerified.findOne({ contactNumber }).select("isVerified");
 		if (!existing || !existing.isVerified) {
 			return res.status(400).json({ msg: "First please verify the user" });
 		}
 
-		const existingVendor = await Vendor.findOne({ email });
+		// Check if a vendor already exists with this contact number
+		const existingVendor = await Vendor.findOne({ contactNumber });
 		if (existingVendor) {
 			if (existingVendor.isBlacklisted) {
 				return res.status(403).json({
@@ -33,16 +35,21 @@ exports.signupVendor = async (req, res) => {
 			return res.status(400).json({ msg: "Vendor already registered." });
 		}
 
+		// Hash password
 		const hashed = await bcrypt.hash(password, 10);
+
+		// Create new vendor
 		const newVendor = new Vendor({
 			name,
-			email,
+			contactNumber,
 			password: hashed,
 			isApproved: false, // 🚫 requires admin approval
 		});
 
+		// Generate token
 		const token = jwt.sign({ id: newVendor._id, role: newVendor.role }, process.env.JWT_SECRET);
 
+		// Save vendor and remove from notVerified
 		await newVendor.save();
 		await existing.deleteOne();
 
@@ -56,10 +63,43 @@ exports.signupVendor = async (req, res) => {
 };
 
 // ✅ VENDOR LOGIN
-exports.loginVendor = async (req, res) => {
+exports.loginVendorUsingEmail = async (req, res) => {
 	try {
 		const { email, password } = req.body;
-		const vendor = await Vendor.findOne({ email });
+		const vendor = await Vendor.find({ email });
+
+		if (!vendor) return res.status(400).json({ msg: "Invalid credentials" });
+		if (vendor.isBlacklisted) {
+			return res.status(403).json({
+				msg: "Your account has been blacklisted. You cannot log in.",
+				reason: vendor.blacklistReason || "Violation of platform policies",
+				support: "Contact support if you believe this was a mistake.",
+			});
+		}
+		if (!vendor.isApproved) {
+			return res.status(403).json({
+				msg: "Your account is not approved by admin yet. Please wait for verification.",
+			});
+		}
+		const isMatch = await bcrypt.compare(password, vendor.password);
+		if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
+		const token = jwt.sign({ id: vendor._id, role: vendor.role }, process.env.JWT_SECRET);
+
+		res.json({
+			authToken: token,
+			role: vendor.role,
+			user: {
+				isProfileCompleted: vendor.isProfileCompleted,
+			},
+		});
+	} catch (err) {
+		res.status(500).json({ msg: "Server error", error: err.message });
+	}
+};
+exports.loginVendorUsingContact = async (req, res) => {
+	try {
+		const { contactNumber, password } = req.body;
+		const vendor = await Vendor.findOne({ contactNumber });
 
 		if (!vendor) return res.status(400).json({ msg: "Invalid credentials" });
 
@@ -97,9 +137,9 @@ exports.loginVendor = async (req, res) => {
 // ✅ SEND OTP
 exports.sendValidationOTP = async (req, res) => {
 	try {
-		const { email } = req.body;
-		const generatedOTP = await generate4DigitOtp(email);
-
+		const { contactNumber } = req.body;
+		// const generatedOTP = await generate4DigitOtp(contactNumber);
+		const generatedOTP = "1234";
 		// Already verified vendor (skip OTP)
 		if (req.alreadyVerified) {
 			return res.json({
@@ -110,52 +150,65 @@ exports.sendValidationOTP = async (req, res) => {
 
 		if (req.notVerified) {
 			// Signup flow: update NotVerified schema
-			const notVerifiedVendor = await nonVerified.findOne({ email });
+			const notVerifiedVendor = await nonVerified.findOne({ contactNumber });
 			if (notVerifiedVendor) {
 				notVerifiedVendor.otp = generatedOTP;
 				notVerifiedVendor.lastOTPSend = new Date();
 				await notVerifiedVendor.save();
 			} else {
-				await notVerifiedVendor.create({ email, otp: generatedOTP });
+				await nonVerified.create({ contactNumber, otp: generatedOTP });
 			}
 
-			await sendOTP("no Name", generatedOTP, email);
+			// Send OTP via SMS
+			//   await sendOTPToPhone(contactNumber, generatedOTP);
 
 			return res.json({
 				status: true,
-				msg: "OTP sent to unverified vendor email.",
+				msg: "OTP sent to unverified vendor contact number.",
 			});
 		} else {
 			// Post-signup / forgot password: update Vendor schema
-			const vendor = await Vendor.findOneAndUpdate({ email }, { $set: { otp: generatedOTP } }, { new: true }).select(
-				"name"
-			);
+			const vendor = await Vendor.findOneAndUpdate(
+				{ contactNumber },
+				{ $set: { otp: generatedOTP } },
+				{ new: true }
+			).select("name");
 
 			if (!vendor) {
 				return res.status(404).json({ status: false, msg: "Vendor not found" });
 			}
 
-			await sendOTP(vendor.name, generatedOTP, email);
+			// Send OTP via SMS
+			//   await sendOTPToPhone(contactNumber, generatedOTP);
 
 			return res.json({
 				status: true,
-				msg: "OTP sent to your email.",
+				msg: "OTP sent to your contact number.",
 				vendorName: vendor.name,
 			});
 		}
 	} catch (err) {
-		res.status(503).json({ msg: "Server error", error: err.message });
+		res.status(500).json({
+			msg: "Server error in sendValidationOTP",
+			error: err.message,
+		});
 	}
 };
 
 // ✅ VALIDATE EMAIL AFTER OTP
-exports.validateEmail = async (req, res) => {
+exports.validateContactNumber = async (req, res) => {
 	try {
 		if (res.nonVerifiedUserValid) {
-			return res.json({ status: true, msg: "New Vendor verified, proceed with signup" });
+			return res.json({
+				status: true,
+				msg: "New Vendor verified, proceed with signup",
+			});
 		}
 		if (res.otpValidationResult) {
-			return res.json({ status: true, msg: "Vendor email verified successfully" });
+			return res.json({
+				status: true,
+				msg: "Vendor contact number verified successfully",
+			});
 		}
 		res.status(400).json({ status: false, msg: "Invalid OTP" });
 	} catch (err) {
@@ -173,36 +226,36 @@ exports.createVendorProfile = async (req, res) => {
 		if (req.body.name) updateData.name = req.body.name;
 		if (req.body.businessName) updateData.businessName = req.body.businessName;
 		if (req.body.experience) updateData.experience = req.body.experience + " years";
-		if (req.body.phone) updateData.phone = req.body.phone;
+		if (req.body.contactNumber) updateData.contactNumber = req.body.contactNumber;
 		if (req.body.location) updateData.location = req.body.location;
-		if (req.body.paymentMethods) updateData.paymentMethods = req.body.paymentMethods;
-		if (req.body.lastPayments) updateData.lastPayments = req.body.lastPayments;
+		if (req.body.address) updateData.address = req.body.address;
+
+		// if (req.body.paymentMethods) updateData.paymentMethods = req.body.paymentMethods;
+		// if (req.body.lastPayments) updateData.lastPayments = req.body.lastPayments;
 		if (req.body.services) {
 			const vendor = await Vendor.findById(vendorId).select("services");
 			updateData.services = Array.from(new Set([...(vendor.services || []), ...req.body.services]));
 		}
+		if (req.body.email) updateData.email = req.body.email;
 		// Working days
-		const daysMap = {
-			Mon: "monday",
-			Tue: "tuesday",
-			Wed: "wednesday",
-			Thu: "thursday",
-			Fri: "friday",
-			Sat: "saturday",
-			Sun: "sunday",
-		};
 		if (req.body.workingDays) {
 			updateData.workingDays = {};
-			req.body.workingDays.forEach((day) => {
-				const key = daysMap[day];
-				if (key) updateData.workingDays[key] = true;
+
+			// Loop through the keys of the payload
+			Object.keys(req.body.workingDays).forEach((day) => {
+				// Ensure the key is valid (monday..sunday)
+				const validDays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+				if (validDays.includes(day)) {
+					updateData.workingDays[day] = !!req.body.workingDays[day]; // convert to boolean
+				}
 			});
 		}
 
 		// idProof
-		if (req.body.uniqueName) {
-			updateData.idProof = "uploads/" + req.body.uniqueName;
+		if (req.idProofFile) {
+			updateData.idProof = req.idProofFile.path; // "/uploads/xxxx.png"
 		}
+
 		if (req.body.paymentSuccess) {
 			updateData.isSubscribed = true; // mark subscription as true
 		}
@@ -270,8 +323,8 @@ exports.createVendorProfile = async (req, res) => {
 exports.forgetPassword = async (req, res) => {
 	try {
 		if (res.otpValidationResult) {
-			const { email, newPassword } = req.body;
-			const vendor = await Vendor.findOne({ email });
+			const { contactNumber, newPassword } = req.body;
+			const vendor = await Vendor.findOne({ contactNumber });
 
 			vendor.otp = null;
 			vendor.password = await bcrypt.hash(newPassword, 10);
