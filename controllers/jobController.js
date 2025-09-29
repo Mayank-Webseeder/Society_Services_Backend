@@ -93,21 +93,30 @@ exports.createJob = async (req, res) => {
 // 2. Vendor: Get Jobs Nearby (with application status)
 exports.getNearbyJobs = async (req, res) => {
   try {
-    const { longitude, latitude, quotationRequired } = req.query;
+    const { quotationRequired } = req.query;
     const vendorId = req.user.id;
+
+    // 1️⃣ Get vendor location from DB
+    const vendor = await Vendor.findById(vendorId).select("location");
+    if (!vendor || !vendor.location?.GeoLocation?.latitude || !vendor.location?.GeoLocation?.longitude) {
+      return res.status(400).json({ msg: "Vendor location not set in database" });
+    }
+const lon = parseFloat(vendor.location.GeoLocation.longitude);
+const lat = parseFloat(vendor.location.GeoLocation.latitude);
+
 
     const filter = {
       geo: {
         $near: {
           $geometry: {
             type: "Point",
-            coordinates: [parseFloat(longitude), parseFloat(latitude)],
+            coordinates: [lon, lat],
           },
-          $maxDistance: 20000,
+          $maxDistance: 20000, // 20 km
         },
       },
       isActive: true,
-      status: { $ne: "Expired" }, // Exclude expired jobs
+      status: { $ne: "Expired" },
     };
 
     if (quotationRequired === "true") filter.quotationRequired = true;
@@ -152,6 +161,7 @@ exports.getNearbyJobs = async (req, res) => {
     res.status(500).json({ msg: "Error fetching nearby jobs", error: err.message });
   }
 };
+
 
 // 3. Get Single Job by ID
 exports.getJobById = async (req, res) => {

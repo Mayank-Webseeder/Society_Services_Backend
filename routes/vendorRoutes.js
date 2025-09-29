@@ -2,12 +2,13 @@ const express = require("express");
 const router = express.Router();
 
 const {
-	loginVendor,
+	loginVendorUsingContact,
 	signupVendor,
 	createVendorProfile,
 	sendValidationOTP,
-	validateEmail,
+	validateContactNumber,
 	forgetPassword,
+	loginVendorUsingEmail,
 } = require("../controllers/vendor/vendorAuth");
 
 const { purchaseSubscription, checkSubscriptionStatus, addServiceToSubscription } = require("../controllers/vendor/subscriptionController");
@@ -74,7 +75,7 @@ router.post("/signup", signupVendor);
  *       200:
  *         description: Vendor logged in successfully
  */
-router.post("/login", loginVendor);
+router.post("/login", loginVendorUsingContact);
 
 /**
  * @swagger
@@ -123,7 +124,7 @@ router.put("/createProfile", authenticate, authorizeRoles("vendor"), uploadIDPro
  *       200:
  *         description: OTP sent
  */
-router.post("/sendOtpEmailVerification", signUpNotVerified, sendValidationOTP);
+router.post("/sendOtpContactVerification", signUpNotVerified, sendValidationOTP);
 router.post("/sendOTP", sendValidationOTP);
 
 /**
@@ -147,7 +148,7 @@ router.post("/sendOTP", sendValidationOTP);
  *       200:
  *         description: Email validated
  */
-router.post("/validateEmail", validateOTP, validateEmail);
+router.post("/validateContactNumber", validateOTP, validateContactNumber);
 
 /**
  * @swagger
