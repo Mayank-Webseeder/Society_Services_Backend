@@ -8,10 +8,9 @@ exports.signUpNotVerified = async (req, res, next) => {
     // Check if vendor already signed up with this number
     const vendor = await Vendor.findOne({ contactNumber });
     if (vendor) {
-      return res.status(400).json({
-        status: false,
-        msg: "Vendor already signed up with this contact number. Please login.",
-      });
+      // Instead of blocking, set flag for forget password flow
+      req.alreadyVerified = true; 
+      return next(); // allow OTP generation
     }
 
     // If vendor doesn't exist, check NotVerified collection
