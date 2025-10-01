@@ -229,7 +229,7 @@ exports.createVendorProfile = async (req, res) => {
 		if (req.body.contactNumber) updateData.contactNumber = req.body.contactNumber;
 		if (req.body.location) updateData.location = req.body.location;
 		if (req.body.address) updateData.address = req.body.address;
-
+		if (req.body.gender) updateData.gender = req.body.gender;
 		// if (req.body.paymentMethods) updateData.paymentMethods = req.body.paymentMethods;
 		// if (req.body.lastPayments) updateData.lastPayments = req.body.lastPayments;
 		if (req.body.services) {
