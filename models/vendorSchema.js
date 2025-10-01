@@ -10,7 +10,7 @@ const vendorSchema = new mongoose.Schema(
       type: String,
       // required: true,
       unique: true,
-      spare: true,
+      sparse: true,
       trim: true,
       match: [/\S+@\S+\.\S+/, "Please provide a valid email address"],
     },
