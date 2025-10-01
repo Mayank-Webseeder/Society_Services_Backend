@@ -43,7 +43,7 @@ exports.signupVendor = async (req, res) => {
 			name,
 			contactNumber,
 			password: hashed,
-			isApproved: false, // 🚫 requires admin approval
+			isApproved: true, // 🚫 requires admin approval
 		});
 
 		// Generate token
@@ -139,15 +139,34 @@ exports.sendValidationOTP = async (req, res) => {
 	try {
 		const { contactNumber } = req.body;
 		// const generatedOTP = await generate4DigitOtp(contactNumber);
+		if (!contactNumber) {
+			return res.status(400).json({ msg: "Contact number is required" });
+		}
 		const generatedOTP = "1234";
 		// Already verified vendor (skip OTP)
 		if (req.alreadyVerified) {
+			const vendor = await Vendor.findOneAndUpdate(
+				{ contactNumber },
+				{ $set: { otp: generatedOTP, lastOTPSend: new Date() } },
+				{ new: true }
+			).select("name");
+
+			if (!vendor) {
+				return res.status(404).json({
+					status: false,
+					msg: "Vendor not found",
+				});
+			}
+
+			// Send OTP via SMS/Email service here
+			// await sendOTPToPhone(contactNumber, generatedOTP);
+
 			return res.json({
 				status: true,
-				msg: "Vendor already verified. No OTP needed.",
+				msg: "OTP sent for password reset.",
+				vendorName: vendor.name, // optional for frontend friendliness
 			});
 		}
-
 		if (req.notVerified) {
 			// Signup flow: update NotVerified schema
 			const notVerifiedVendor = await nonVerified.findOne({ contactNumber });
