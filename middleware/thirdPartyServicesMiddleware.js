@@ -69,12 +69,12 @@ exports.validateForgotPasswordOTP = async (req, res, next) => {
     }
 
     // Check OTP age (1 hour validity)
-    const otpAge = Date.now() - new Date(vendor.lastOTPSend).getTime();
-    if (otpAge > 60 * 60 * 1000) {
-      return res
-        .status(400)
-        .json({ status: false, msg: "OTP expired, request new one" });
-    }
+    // const otpAge = Date.now() - new Date(vendor.lastOTPSend).getTime();
+    // if (otpAge > 60 * 60 * 1000) {
+    //   return res
+    //     .status(400)
+    //     .json({ status: false, msg: "OTP expired, request new one" });
+    // }
 
     // Check OTP value
     if (vendor.otp !== otp) {

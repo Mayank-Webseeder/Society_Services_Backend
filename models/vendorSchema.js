@@ -5,7 +5,7 @@ const vendorSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     businessName: { type: String, default: "Not Given" },
-    profilePicture: { type: String, required: false, default: "null" },
+    profilePicture: { type: String, required: false, default: null },
     email: {
       type: String,
       // required: true,
@@ -44,8 +44,8 @@ const vendorSchema = new mongoose.Schema(
     },
 
     workingHours: {
-      from: { type: String, default: "09:00" },
-      upto: { type: String, default: "18:00" },
+      from: { type: String, default: "null" },
+      upto: { type: String, default: "null" },
     },
 
     experience: {

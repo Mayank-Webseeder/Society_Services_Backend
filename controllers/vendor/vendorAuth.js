@@ -227,17 +227,24 @@ exports.createVendorProfile = async (req, res) => {
 		}
 		if (req.body.email) updateData.email = req.body.email;
 		// Working days
-		if (req.body.workingDays) {
-			updateData.workingDays = {};
+		// console.log("Incoming workingDays:", req.body.workingDays, typeof req.body.workingDays);
 
-			// Loop through the keys of the payload
-			Object.keys(req.body.workingDays).forEach((day) => {
-				// Ensure the key is valid (monday..sunday)
-				const validDays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-				if (validDays.includes(day)) {
-					updateData.workingDays[day] = !!req.body.workingDays[day]; // convert to boolean
-				}
-			});
+		if (req.body.workingDays) {
+			const validDays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+			const workingDaysObj = {};
+
+			if (Array.isArray(req.body.workingDays)) {
+				// Payload: ["monday", "saturday"]
+				validDays.forEach((day) => {
+					workingDaysObj[day] = req.body.workingDays.includes(day);
+				});
+			} else if (typeof req.body.workingDays === "object") {
+				// Payload: { monday: true, saturday: true }
+				validDays.forEach((day) => {
+					workingDaysObj[day] = !!req.body.workingDays[day];
+				});
+			}
+			updateData.workingDays = workingDaysObj; // ✅ overwrite with final object
 		}
 
 		// idProof
@@ -332,23 +339,19 @@ exports.sendForgotPasswordOTP = async (req, res) => {
 		const { contactNumber } = req.body;
 
 		if (!contactNumber) {
-			return res
-				.status(400)
-				.json({ status: false, msg: "Contact number is required" });
+			return res.status(400).json({ status: false, msg: "Contact number is required" });
 		}
 
 		// Check if vendor exists
 		const vendor = await Vendor.findOne({ contactNumber });
 		if (!vendor) {
-			return res
-				.status(404)
-				.json({ status: false, msg: "Vendor not found" });
+			return res.status(404).json({ status: false, msg: "Vendor not found" });
 		}
 
 		// Generate OTP (4 digits)
 		// const generatedOTP = Math.floor(1000 + Math.random() * 9000).toString();
 		const generatedOTP = "1234";
-		
+
 		// Save OTP, reset verification, and update timestamp
 		vendor.otp = generatedOTP;
 		// vendor.lastOTPSend = new Date();
@@ -372,4 +375,3 @@ exports.sendForgotPasswordOTP = async (req, res) => {
 		});
 	}
 };
-

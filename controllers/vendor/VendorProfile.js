@@ -55,7 +55,7 @@ exports.updateVendorProfile = async (req, res) => {
       "name",
       "businessName",
       "profilePicture",
-      "phone",
+      "contactNumber",
       "experience",
       "services",
       "address",
