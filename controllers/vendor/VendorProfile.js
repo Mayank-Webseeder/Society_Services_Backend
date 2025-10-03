@@ -50,7 +50,6 @@ exports.getVendorProfile = async (req, res) => {
 // ✅ Vendor → Update Profile
 exports.updateVendorProfile = async (req, res) => {
   try {
-    // ✅ Allowed fields for update (whitelist)
     const allowedFields = [
       "name",
       "businessName",
@@ -66,15 +65,39 @@ exports.updateVendorProfile = async (req, res) => {
     ];
 
     const updates = {};
+    const validDays = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
+
     for (const key of allowedFields) {
       if (req.body[key] !== undefined) {
-        updates[key] = req.body[key];
+        // ✅ Convert workingDays array to object
+        if (key === "workingDays") {
+          const wd = req.body.workingDays;
+          let workingDaysObj = {};
+
+          if (Array.isArray(wd)) {
+            validDays.forEach(day => {
+              workingDaysObj[day] = wd.includes(day);
+            });
+          } else if (typeof wd === "object") {
+            validDays.forEach(day => {
+              workingDaysObj[day] = !!wd[day];
+            });
+          } else {
+            validDays.forEach(day => {
+              workingDaysObj[day] = false;
+            });
+          }
+
+          updates.workingDays = workingDaysObj;
+        } else {
+          updates[key] = req.body[key];
+        }
       }
     }
 
     const updated = await Vendor.findByIdAndUpdate(req.user.id, updates, {
       new: true,
-    }).select("-password -subscription"); // ✅ subscription excluded
+    }).select("-password -subscription");
 
     if (!updated) {
       return res.status(404).json({ msg: "Vendor not found" });
@@ -82,8 +105,6 @@ exports.updateVendorProfile = async (req, res) => {
 
     res.json({ msg: "Profile updated", vendor: updated });
   } catch (err) {
-    res
-      .status(500)
-      .json({ msg: "Failed to update profile", error: err.message });
+    res.status(500).json({ msg: "Failed to update profile", error: err.message });
   }
 };
