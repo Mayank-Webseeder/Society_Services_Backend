@@ -9,17 +9,18 @@ const {
 	validateContactNumber,
 	forgetPassword,
 	loginVendorUsingEmail,
-	sendForgotPasswordOTP
+	sendForgotPasswordOTP,
 } = require("../controllers/vendor/vendorAuth");
 
 const { purchaseSubscription, checkSubscriptionStatus, addServiceToSubscription } = require("../controllers/vendor/subscriptionController");
 
 const { applyToJob } = require("../controllers/applicationController");
 
-const { validateOTP ,validateForgotPasswordOTP } = require("../middleware/thirdPartyServicesMiddleware");
+const { validateOTP, validateForgotPasswordOTP } = require("../middleware/thirdPartyServicesMiddleware");
 const { authenticate, authorizeRoles } = require("../middleware/roleBasedAuth");
 
 const uploadIDProof = require("../middleware/uploadIDProof");
+const uploadProfilePicture = require("../middleware/uploadProfilePicture.js");
 const { signUpNotVerified } = require("../controllers/notVerifiedAuth");
 const { getMyApplications, getVendorDashboard, getVendorProfile, updateVendorProfile } = require("../controllers/vendor/VendorProfile");
 
@@ -126,7 +127,7 @@ router.put("/createProfile", authenticate, authorizeRoles("vendor"), uploadIDPro
  *         description: OTP sent
  */
 router.post("/sendOtpContactVerification", signUpNotVerified, sendSignupOTP);
-router.post("/sendOTP",  sendForgotPasswordOTP);
+router.post("/sendOTP", sendForgotPasswordOTP);
 
 /**
  * @swagger
@@ -149,7 +150,7 @@ router.post("/sendOTP",  sendForgotPasswordOTP);
  *       200:
  *         description: Email validated
  */
-router.post("/validateContactNumber", validateOTP , validateContactNumber);
+router.post("/validateContactNumber", validateOTP, validateContactNumber);
 
 /**
  * @swagger
@@ -174,7 +175,7 @@ router.post("/validateContactNumber", validateOTP , validateContactNumber);
  *       200:
  *         description: Password reset successful
  */
-router.post("/forgetPassword", validateForgotPasswordOTP , forgetPassword);
+router.post("/forgetPassword", validateForgotPasswordOTP, forgetPassword);
 
 /**
  * @swagger
@@ -303,6 +304,6 @@ router.get("/profile", authenticate, authorizeRoles("vendor"), getVendorProfile)
  *       200:
  *         description: Vendor profile updated
  */
-router.put("/profile", authenticate, authorizeRoles("vendor"), updateVendorProfile);
+router.put("/profile", authenticate, authorizeRoles("vendor"), uploadProfilePicture, uploadIDProof, updateVendorProfile);
 
 module.exports = router;

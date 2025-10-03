@@ -1,30 +1,20 @@
 const express = require("express");
 const router = express.Router();
 
-const {
-  signupSociety,
-  loginSociety,
-} = require("../controllers/society/societyAuth");
+const { signupSociety, loginSociety } = require("../controllers/society/societyAuth");
+
+const { getMyPostedJobs, getJobById, deleteJob } = require("../controllers/jobController");
 
 const {
-  getMyPostedJobs,
-  getJobById,
-  deleteJob,
-} = require("../controllers/jobController");
-
-const {
-  getJobApplicants,
-  approveApplication,
-  markJobComplete,
-  getVendorApplicationType,
-  rejectApplication,
-  getApplicantCount,
+	getJobApplicants,
+	approveApplication,
+	markJobComplete,
+	getVendorApplicationType,
+	rejectApplication,
+	getApplicantCount,
 } = require("../controllers/applicationController");
 
-const {
-  authenticate,
-  authorizeRoles,
-} = require("../middleware/roleBasedAuth");
+const { authenticate, authorizeRoles } = require("../middleware/roleBasedAuth");
 
 /**
  * @swagger
@@ -94,7 +84,7 @@ router.post("/login", loginSociety);
  *         description: Welcome message with user details
  */
 router.get("/dashboard", authenticate, authorizeRoles("society"), (req, res) => {
-  res.json({ msg: "Welcome to Society Dashboard", user: req.user });
+	res.json({ msg: "Welcome to Society Dashboard", user: req.user });
 });
 
 /**
