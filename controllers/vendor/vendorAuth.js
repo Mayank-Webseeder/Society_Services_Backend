@@ -135,80 +135,50 @@ exports.loginVendorUsingContact = async (req, res) => {
 };
 
 // ✅ SEND OTP
-exports.sendValidationOTP = async (req, res) => {
+
+exports.sendSignupOTP = async (req, res) => {
 	try {
 		const { contactNumber } = req.body;
-		// const generatedOTP = await generate4DigitOtp(contactNumber);
 		if (!contactNumber) {
 			return res.status(400).json({ msg: "Contact number is required" });
 		}
+
+		// Check if vendor already exists (can't sign up again)
+		const vendor = await Vendor.findOne({ contactNumber });
+		if (vendor) {
+			return res.status(400).json({
+				status: false,
+				msg: "Contact number already registered. Please log in.",
+			});
+		}
+
+		// Generate OTP (replace with actual OTP generator)
 		const generatedOTP = "1234";
-		// Already verified vendor (skip OTP)
-		if (req.alreadyVerified) {
-			const vendor = await Vendor.findOneAndUpdate(
-				{ contactNumber },
-				{ $set: { otp: generatedOTP, lastOTPSend: new Date() } },
-				{ new: true }
-			).select("name");
 
-			if (!vendor) {
-				return res.status(404).json({
-					status: false,
-					msg: "Vendor not found",
-				});
-			}
-
-			// Send OTP via SMS/Email service here
-			// await sendOTPToPhone(contactNumber, generatedOTP);
-
-			return res.json({
-				status: true,
-				msg: "OTP sent for password reset.",
-				vendorName: vendor.name, // optional for frontend friendliness
-			});
-		}
-		if (req.notVerified) {
-			// Signup flow: update NotVerified schema
-			const notVerifiedVendor = await nonVerified.findOne({ contactNumber });
-			if (notVerifiedVendor) {
-				notVerifiedVendor.otp = generatedOTP;
-				notVerifiedVendor.lastOTPSend = new Date();
-				await notVerifiedVendor.save();
-			} else {
-				await nonVerified.create({ contactNumber, otp: generatedOTP });
-			}
-
-			// Send OTP via SMS
-			//   await sendOTPToPhone(contactNumber, generatedOTP);
-
-			return res.json({
-				status: true,
-				msg: "OTP sent to unverified vendor contact number.",
-			});
+		// Check in notVerified collection
+		let notVerifiedVendor = await nonVerified.findOne({ contactNumber });
+		if (notVerifiedVendor) {
+			notVerifiedVendor.otp = generatedOTP;
+			notVerifiedVendor.lastOTPSend = new Date();
+			await notVerifiedVendor.save();
 		} else {
-			// Post-signup / forgot password: update Vendor schema
-			const vendor = await Vendor.findOneAndUpdate(
-				{ contactNumber },
-				{ $set: { otp: generatedOTP } },
-				{ new: true }
-			).select("name");
-
-			if (!vendor) {
-				return res.status(404).json({ status: false, msg: "Vendor not found" });
-			}
-
-			// Send OTP via SMS
-			//   await sendOTPToPhone(contactNumber, generatedOTP);
-
-			return res.json({
-				status: true,
-				msg: "OTP sent to your contact number.",
-				vendorName: vendor.name,
+			notVerifiedVendor = await nonVerified.create({
+				contactNumber,
+				otp: generatedOTP,
+				lastOTPSend: new Date(),
 			});
 		}
+
+		// TODO: integrate SMS/Email service here
+		// await sendOTPToPhone(contactNumber, generatedOTP);
+
+		return res.json({
+			status: true,
+			msg: "OTP sent to your contact number for signup verification.",
+		});
 	} catch (err) {
 		res.status(500).json({
-			msg: "Server error in sendValidationOTP",
+			msg: "Server error in sendSignupOTP",
 			error: err.message,
 		});
 	}
@@ -357,3 +327,49 @@ exports.forgetPassword = async (req, res) => {
 		res.status(500).json({ msg: "Server error", error: err.message });
 	}
 };
+exports.sendForgotPasswordOTP = async (req, res) => {
+	try {
+		const { contactNumber } = req.body;
+
+		if (!contactNumber) {
+			return res
+				.status(400)
+				.json({ status: false, msg: "Contact number is required" });
+		}
+
+		// Check if vendor exists
+		const vendor = await Vendor.findOne({ contactNumber });
+		if (!vendor) {
+			return res
+				.status(404)
+				.json({ status: false, msg: "Vendor not found" });
+		}
+
+		// Generate OTP (4 digits)
+		// const generatedOTP = Math.floor(1000 + Math.random() * 9000).toString();
+		const generatedOTP = "1234";
+		
+		// Save OTP, reset verification, and update timestamp
+		vendor.otp = generatedOTP;
+		// vendor.lastOTPSend = new Date();
+		vendor.isVerified = false; // will be flipped after OTP validation
+		await vendor.save();
+
+		// Send OTP via SMS/Email service here
+		// await sendOTPToPhone(contactNumber, generatedOTP);
+
+		return res.json({
+			status: true,
+			msg: "OTP sent to your registered contact number.",
+			vendorName: vendor.name, // optional for frontend
+		});
+	} catch (err) {
+		console.error("Error in sendForgotPasswordOTP:", err);
+		res.status(500).json({
+			status: false,
+			msg: "Server error in sendForgotPasswordOTP",
+			error: err.message,
+		});
+	}
+};
+

@@ -5,17 +5,18 @@ const {
 	loginVendorUsingContact,
 	signupVendor,
 	createVendorProfile,
-	sendValidationOTP,
+	sendSignupOTP,
 	validateContactNumber,
 	forgetPassword,
 	loginVendorUsingEmail,
+	sendForgotPasswordOTP
 } = require("../controllers/vendor/vendorAuth");
 
 const { purchaseSubscription, checkSubscriptionStatus, addServiceToSubscription } = require("../controllers/vendor/subscriptionController");
 
 const { applyToJob } = require("../controllers/applicationController");
 
-const { validateOTP } = require("../middleware/thirdPartyServicesMiddleware");
+const { validateOTP ,validateForgotPasswordOTP } = require("../middleware/thirdPartyServicesMiddleware");
 const { authenticate, authorizeRoles } = require("../middleware/roleBasedAuth");
 
 const uploadIDProof = require("../middleware/uploadIDProof");
@@ -124,8 +125,8 @@ router.put("/createProfile", authenticate, authorizeRoles("vendor"), uploadIDPro
  *       200:
  *         description: OTP sent
  */
-router.post("/sendOtpContactVerification", signUpNotVerified, sendValidationOTP);
-router.post("/sendOTP", sendValidationOTP);
+router.post("/sendOtpContactVerification", signUpNotVerified, sendSignupOTP);
+router.post("/sendOTP",  sendForgotPasswordOTP);
 
 /**
  * @swagger
@@ -148,7 +149,7 @@ router.post("/sendOTP", sendValidationOTP);
  *       200:
  *         description: Email validated
  */
-router.post("/validateContactNumber", validateOTP, validateContactNumber);
+router.post("/validateContactNumber", validateOTP , validateContactNumber);
 
 /**
  * @swagger
@@ -173,7 +174,7 @@ router.post("/validateContactNumber", validateOTP, validateContactNumber);
  *       200:
  *         description: Password reset successful
  */
-router.post("/forgetPassword", validateOTP, forgetPassword);
+router.post("/forgetPassword", validateForgotPasswordOTP , forgetPassword);
 
 /**
  * @swagger
