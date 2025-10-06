@@ -61,7 +61,8 @@ exports.updateVendorProfile = async (req, res) => {
       "workingDays",
       "workingHours",
       "location",
-      "paymentMethods"
+      "paymentMethods",
+      "idProof"
     ];
 
     const updates = {};

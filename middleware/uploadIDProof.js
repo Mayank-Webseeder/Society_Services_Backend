@@ -48,6 +48,7 @@ if (typeof idProof.fileBase64 === "string" && idProof.fileBase64.startsWith("/up
 
   const fileName = `${Date.now()}-${name}`;
   const filePath = path.join(uploadsDir, fileName);
+  console.log("Saving ID proof to:", filePath);
 
   fs.writeFile(filePath, base64Data, "base64", (err) => {
     if (err) {

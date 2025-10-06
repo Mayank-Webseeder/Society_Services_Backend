@@ -237,7 +237,7 @@ router.post("/add-service", authenticate, authorizeRoles("vendor"), addServiceTo
  *       200:
  *         description: Application submitted
  */
-router.post("/jobs/:id/apply", authenticate, authorizeRoles("vendor"), applyToJob);
+// router.post("/jobs/:id/apply", authenticate, authorizeRoles("vendor"), applyToJob);
 
 /**
  * @swagger

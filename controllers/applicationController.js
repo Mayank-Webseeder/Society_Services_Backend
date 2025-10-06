@@ -8,8 +8,6 @@ exports.applyToJob = async (req, res) => {
     const {
       message,
       quotedPrice,
-      estimatedTime,
-      additionalNotes,
     } = req.body;
 
     const jobId = req.params.id;
@@ -28,8 +26,6 @@ exports.applyToJob = async (req, res) => {
       applicationType: "quotation",
       message,
       quotedPrice,
-      estimatedTime,
-      additionalNotes,
       status: "approval pending",
       isQuotation: true,
     });

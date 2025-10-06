@@ -45,7 +45,11 @@ app.use("/uploads/idProof", express.static(path.join(__dirname, "middleware/uplo
 app.use("/uploads/profilePictures", express.static(path.join(__dirname, "middleware/uploads/profilePictures")));
 // ✅ Swagger API docs
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
+app.use("/uploads/idProof", (req, res, next) => {
+  // Force browser to open instead of downloading
+  res.setHeader("Content-Disposition", "inline");
+  next();
+});
 // ✅ Root Health Check
 app.get("/", (req, res) => {
 	res.send("Welcome to Velnor API");

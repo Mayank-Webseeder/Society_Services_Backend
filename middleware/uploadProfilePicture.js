@@ -38,19 +38,24 @@ const uploadProfilePicture = (req, res, next) => {
 		});
 	}
 
-	const mimeType = match[1]; // e.g., image/jpeg
+	const mimeType = match[1]; // e.g., image/jpeg or application/pdf
 	const base64Data = match[2];
-	const extension = mimeType.split("/")[1]; // e.g., jpeg, png
+	const extension = mimeType.split("/")[1]; // e.g., jpeg, png, pdf
 
-	// Optional: enforce image types only
+	// ✅ Allow only JPEG, JPG, PNG, and PDF
 	if (!["jpeg", "jpg", "png"].includes(extension.toLowerCase())) {
 		return res.status(400).json({
 			success: false,
-			message: "Only JPEG or PNG images are allowed",
+			message: "Only JPEG, PNG , jpg files are allowed",
 		});
 	}
-const fileName = `${Date.now()}-${name}`;
-const filePath = path.join(uploadsDirProfilePic, fileName);
+
+	// Construct file name and path
+	// const baseName = path.parse(name).name;
+	const fileName = `${Date.now()}-${name}.${extension}`;
+	const filePath = path.join(uploadsDirProfilePic, fileName);
+	console.log("Saving profile picture to:", filePath);
+
 
 fs.writeFile(filePath, base64Data, "base64", (err) => {
     if (err) {
