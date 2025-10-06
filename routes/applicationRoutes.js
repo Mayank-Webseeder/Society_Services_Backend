@@ -10,6 +10,7 @@ const {
 } = require("../controllers/applicationController");
 
 const { authMiddleware } = require("../middleware/authMiddleware");
+const uploadQuotedPdf = require("../middleware/uploadQuotedPDF");
 
 /**
  * @swagger
@@ -75,7 +76,7 @@ router.post("/:id/interest", authMiddleware, showInterestInJob);
  *       401:
  *         description: Unauthorized
  */
-router.post("/:id/apply", authMiddleware, applyToJob);
+router.post("/:id/apply", authMiddleware, uploadQuotedPdf,applyToJob);
 
 /**
  * @swagger

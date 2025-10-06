@@ -50,6 +50,15 @@ app.use("/uploads/idProof", (req, res, next) => {
   res.setHeader("Content-Disposition", "inline");
   next();
 });
+app.use(
+	"/uploads/quotations",
+	express.static(path.join(__dirname, "middleware/uploads/quotations"), {
+		setHeaders: (res) => {
+			res.setHeader("Content-Disposition", "inline");
+		},
+	})
+);
+
 // ✅ Root Health Check
 app.get("/", (req, res) => {
 	res.send("Welcome to Velnor API");

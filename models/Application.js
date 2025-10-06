@@ -19,16 +19,10 @@ const applicationSchema = new mongoose.Schema({
     enum: ["interest", "quotation"], // ✅ updated
     required: true,
   },
-  quotedPrice: {
-    type: Number,
-  },
-  estimatedTime: {
-    hours: { type: Number },
-    minutes: { type: Number },
-  },
-  additionalNotes: {
+  quotedpdf: {
     type: String,
   },
+ 
   status: {
     type: String,
     enum: ["approval pending", "approved", "rejected"],
@@ -44,9 +38,7 @@ const applicationSchema = new mongoose.Schema({
 applicationSchema.pre("save", function (next) {
   if (this.applicationType === "interest") {
     this.message = undefined;
-    this.quotedPrice = undefined;
-    this.estimatedTime = undefined;
-    this.additionalNotes = undefined;
+    this.quotedpdf = undefined;
   }
   next();
 });
