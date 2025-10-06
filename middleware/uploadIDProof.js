@@ -66,6 +66,7 @@ if (typeof idProof.fileBase64 === "string" && idProof.fileBase64.startsWith("/up
       fullPath: filePath,
       mimeType,
     };
+    req.body.idProof = req.idProofFile.path; // Update body to store path
 
     next();
   });
