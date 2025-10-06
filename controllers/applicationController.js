@@ -7,7 +7,7 @@ exports.applyToJob = async (req, res) => {
   try {
     const {
       message,
-      quotedPrice,
+      quotedpdf,
     } = req.body;
 
     const jobId = req.params.id;
@@ -24,8 +24,8 @@ exports.applyToJob = async (req, res) => {
       job: jobId,
       vendor: req.user.id,
       applicationType: "quotation",
-      message,
-      quotedPrice,
+      message: message||"",
+      quotedpdf,
       status: "approval pending",
       isQuotation: true,
     });
@@ -62,6 +62,7 @@ exports.showInterestInJob = async (req, res) => {
       applicationType: "interest",
       status: "approval pending",
       isQuotation: false,
+      message: req.body.message||"",
     });
 
     if (job.status === "New") {
