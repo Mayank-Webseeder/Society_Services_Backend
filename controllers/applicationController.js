@@ -64,7 +64,7 @@ exports.showInterestInJob = async (req, res) => {
       applicationType: "interest",
       status: "approval pending",
       isQuotation: false,
-      message: req.body.message||"",
+      message: req.body?.message||"",
     });
 
     if (job.status === "New") {
