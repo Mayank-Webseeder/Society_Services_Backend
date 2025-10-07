@@ -30,7 +30,7 @@ const vendorSchema = new mongoose.Schema(
     idProof: {
       type: String,
       required: false,
-      default: "null",
+      default: null,
     },
 
     workingDays: {
@@ -44,8 +44,8 @@ const vendorSchema = new mongoose.Schema(
     },
 
     workingHours: {
-      from: { type: String, default: "null" },
-      upto: { type: String, default: "null" },
+      from: { type: String, default: null },
+      upto: { type: String, default: null },
     },
 
     experience: {

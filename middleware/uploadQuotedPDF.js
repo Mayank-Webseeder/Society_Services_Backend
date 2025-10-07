@@ -11,7 +11,10 @@ const uploadQuotedPdf = (req, res, next) => {
 	const quotedPdf = req.body?.quotedpdf;
 
 	// If no PDF data provided, move on
-	if (!quotedPdf) return next();
+	if (!quotedPdf) return res.status(400).json({
+		success: false,
+		message: "No quotedpdf data provided",
+	});
 
 	// Handle already uploaded file path case
 	if (typeof quotedPdf.fileBase64 === "string" && quotedPdf.fileBase64.startsWith("/uploads/quotations/")) {
