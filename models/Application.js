@@ -37,7 +37,7 @@ const applicationSchema = new mongoose.Schema({
 // ✅ Auto-clear fields if applicationType is "interest"
 applicationSchema.pre("save", function (next) {
   if (this.applicationType === "interest") {
-    this.message = undefined;
+    // this.message = undefined;
     this.quotedpdf = undefined;
   }
   next();

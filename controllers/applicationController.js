@@ -45,6 +45,8 @@ exports.applyToJob = async (req, res) => {
 
 // 🔹 Vendor shows interest (button click, no quotation)
 exports.showInterestInJob = async (req, res) => {
+  console.log("heelllooo");
+   console.log(req.body.message);
   try {
     const jobId = req.params.id;
 
@@ -55,7 +57,7 @@ exports.showInterestInJob = async (req, res) => {
     if (existing) {
       return res.status(400).json({ msg: "Already applied or shown interest for this job" });
     }
-
+    // console.log(req.body);
     const application = new Application({
       job: jobId,
       vendor: req.user.id,
