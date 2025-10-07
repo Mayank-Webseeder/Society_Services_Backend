@@ -22,7 +22,7 @@ const { authenticate, authorizeRoles } = require("../middleware/roleBasedAuth");
 const uploadIDProof = require("../middleware/uploadIDProof");
 const uploadProfilePicture = require("../middleware/uploadProfilePicture.js");
 const { signUpNotVerified } = require("../controllers/notVerifiedAuth");
-const { getMyApplications, getVendorDashboard, getVendorProfile, updateVendorProfile } = require("../controllers/vendor/VendorProfile");
+const { getMyApplications, getVendorDashboard, getVendorProfile, updateVendorProfile,getFeedbacks,getRating } = require("../controllers/vendor/VendorProfile");
 
 /**
  * @swagger
@@ -305,5 +305,9 @@ router.get("/profile", authenticate, authorizeRoles("vendor"), getVendorProfile)
  *         description: Vendor profile updated
  */
 router.put("/profile", authenticate, authorizeRoles("vendor"), uploadProfilePicture, uploadIDProof, updateVendorProfile);
+router.get("/getRating", authenticate, getRating);
+
+// GET vendor's own feedbacks
+router.get("/getFeedbacks", authenticate, getFeedbacks);
 
 module.exports = router;

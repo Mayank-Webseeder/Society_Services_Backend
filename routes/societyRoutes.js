@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-const { signupSociety, loginSociety } = require("../controllers/society/societyAuth");
+const { signupSociety, loginSociety,giveRating } = require("../controllers/society/societyAuth");
 
 const { getMyPostedJobs, getJobById, deleteJob } = require("../controllers/jobController");
 
@@ -266,4 +266,5 @@ router.get("/jobs/:jobId/vendor/:vendorId", authenticate, authorizeRoles("societ
  */
 router.delete("/jobs/:jobId/delete", authenticate, authorizeRoles("society"), deleteJob);
 
+router.post("/give-feedback/:jobId", authenticate, authorizeRoles("society"),giveRating);
 module.exports = router;
