@@ -45,8 +45,8 @@ exports.applyToJob = async (req, res) => {
 
 // 🔹 Vendor shows interest (button click, no quotation)
 exports.showInterestInJob = async (req, res) => {
-  console.log("heelllooo");
-   console.log(req.body.message);
+  // console.log("heelllooo");
+  //  console.log(req.body.message);
   try {
     const jobId = req.params.id;
 
