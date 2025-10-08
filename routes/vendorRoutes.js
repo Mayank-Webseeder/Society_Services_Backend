@@ -14,7 +14,7 @@ const {
 
 const { purchaseSubscription, checkSubscriptionStatus, addServiceToSubscription } = require("../controllers/vendor/subscriptionController");
 
-const { applyToJob } = require("../controllers/applicationController");
+const { withdrawApplication } = require("../controllers/applicationController");
 
 const { validateOTP, validateForgotPasswordOTP } = require("../middleware/thirdPartyServicesMiddleware");
 const { authenticate, authorizeRoles } = require("../middleware/roleBasedAuth");
@@ -309,5 +309,5 @@ router.get("/getRating", authenticate, getRating);
 
 // GET vendor's own feedbacks
 router.get("/getFeedbacks", authenticate, getFeedbacks);
-
+router.put("/withdraw/:applicationId", authenticate,authorizeRoles("vendor"), withdrawApplication);
 module.exports = router;
