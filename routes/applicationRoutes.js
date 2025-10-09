@@ -11,6 +11,7 @@ const {
 
 const { authMiddleware } = require("../middleware/authMiddleware");
 const uploadQuotedPdf = require("../middleware/uploadQuotedPDF");
+const { authorizeRoles } = require("../middleware/roleBasedAuth");
 
 /**
  * @swagger
@@ -40,7 +41,7 @@ const uploadQuotedPdf = require("../middleware/uploadQuotedPDF");
  *       401:
  *         description: Unauthorized
  */
-router.post("/:id/interest", authMiddleware, showInterestInJob);
+router.post("/:id/interest", authMiddleware, authorizeRoles("vendor"), showInterestInJob);
 
 /**
  * @swagger
@@ -76,7 +77,7 @@ router.post("/:id/interest", authMiddleware, showInterestInJob);
  *       401:
  *         description: Unauthorized
  */
-router.post("/:id/apply", authMiddleware, uploadQuotedPdf,applyToJob);
+router.post("/:id/apply", authMiddleware, authorizeRoles("vendor"),uploadQuotedPdf,applyToJob);
 
 /**
  * @swagger
@@ -99,7 +100,7 @@ router.post("/:id/apply", authMiddleware, uploadQuotedPdf,applyToJob);
  *       401:
  *         description: Unauthorized
  */
-router.get("/:id/applicants", authMiddleware, getJobApplicants);
+router.get("/:id/applicants", authMiddleware, authorizeRoles("society"),getJobApplicants);
 
 /**
  * @swagger
@@ -122,7 +123,7 @@ router.get("/:id/applicants", authMiddleware, getJobApplicants);
  *       401:
  *         description: Unauthorized
  */
-router.post("/:applicationId/approve", authMiddleware, approveApplication);
+router.post("/:applicationId/approve", authMiddleware, authorizeRoles("society"),approveApplication);
 
 /**
  * @swagger
@@ -145,7 +146,7 @@ router.post("/:applicationId/approve", authMiddleware, approveApplication);
  *       401:
  *         description: Unauthorized
  */
-router.post("/job/:jobId/complete", authMiddleware, markJobComplete);
+router.post("/job/:jobId/complete", authMiddleware, authorizeRoles("society"),markJobComplete);
 
 /**
  * @swagger
@@ -174,6 +175,6 @@ router.post("/job/:jobId/complete", authMiddleware, markJobComplete);
  *       401:
  *         description: Unauthorized
  */
-router.get("/:jobId/vendor/:vendorId", authMiddleware, getVendorApplicationType);
+router.get("/:jobId/vendor/:vendorId", authMiddleware, authorizeRoles("society"),getVendorApplicationType);
 
 module.exports = router;

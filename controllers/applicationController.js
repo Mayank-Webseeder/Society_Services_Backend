@@ -79,7 +79,7 @@ exports.getJobApplicants = async (req, res) => {
 			return res.status(403).json({ msg: "Unauthorized" });
 		}
 
-		const applications = await Application.find({ job: jobId })
+		const applications = await Application.find({ job: jobId ,status: { $ne: "withdrawn" },})
 			.populate("vendor", "name email phone")
 			.select("applicationType status vendor");
 
@@ -99,28 +99,43 @@ exports.getJobApplicants = async (req, res) => {
 
 // ✅ Approve a vendor application
 exports.approveApplication = async (req, res) => {
-	try {
-		const { applicationId } = req.params;
+  try {
+    const { applicationId } = req.params;
 
-		const application = await Application.findById(applicationId).populate("job");
-		if (!application) return res.status(404).json({ msg: "Application not found" });
+    const application = await Application.findById(applicationId).populate("job");
+    if (!application) return res.status(404).json({ msg: "Application not found" });
 
-		if (application.job.society.toString() !== req.user.id) {
-			return res.status(403).json({ msg: "Unauthorized" });
-		}
+    // ✅ Society ownership check
+    if (application.job.society.toString() !== req.user.id) {
+      return res.status(403).json({ msg: "Unauthorized" });
+    }
 
-		application.status = "approved";
-		await application.save();
+    // ✅ Prevent approving withdrawn applications
+    if (application.status === "withdrawn") {
+      return res.status(400).json({ msg: "Cannot approve a withdrawn application" });
+    }
 
-		const job = await Job.findById(application.job._id);
-		job.status = "Ongoing";
-		await job.save();
+    // ✅ Approve current application
+    application.status = "approved";
+    await application.save();
 
-		res.json({ msg: "Application approved. Job is now Ongoing", application });
-	} catch (err) {
-		res.status(500).json({ msg: "Error approving application", error: err.message });
-	}
+    // ✅ Reject all other applications for the same job
+    await Application.updateMany(
+      { job: application.job._id, _id: { $ne: application._id } },
+      { $set: { status: "rejected" } }
+    );
+
+    // ✅ Update job status to Ongoing
+    const job = await Job.findById(application.job._id);
+    job.status = "Ongoing";
+    await job.save();
+
+    res.json({ msg: "Application approved. Job is now Ongoing", application });
+  } catch (err) {
+    res.status(500).json({ msg: "Error approving application", error: err.message });
+  }
 };
+
 
 // ✅ Mark job as completed
 exports.markJobComplete = async (req, res) => {
@@ -179,7 +194,7 @@ exports.getApplicantCount = async (req, res) => {
 			return res.status(403).json({ msg: "Unauthorized" });
 		}
 
-		const applications = await Application.find({ job: jobId });
+		const applications = await Application.find({ job: jobId ,status: { $ne: "withdrawn" },});
 
 		const totalApplicants = applications.length;
 		const quotationApplications = applications.filter((a) => a.isQuotation).length;
@@ -197,24 +212,47 @@ exports.getApplicantCount = async (req, res) => {
 };
 // ✅ Society → Reject Vendor Application
 exports.rejectApplication = async (req, res) => {
-	try {
-		const { applicationId } = req.params;
+  try {
+    const { applicationId } = req.params;
 
-		const application = await Application.findById(applicationId).populate("job");
-		if (!application) return res.status(404).json({ msg: "Application not found" });
+    const application = await Application.findById(applicationId).populate("job");
+    if (!application) return res.status(404).json({ msg: "Application not found" });
 
-		if (application.job.society.toString() !== req.user.id) {
-			return res.status(403).json({ msg: "Unauthorized" });
-		}
+    // ✅ Society ownership check
+    if (application.job.society.toString() !== req.user.id) {
+      return res.status(403).json({ msg: "Unauthorized" });
+    }
 
-		application.status = "rejected";
-		await application.save();
+    // ✅ Prevent rejecting withdrawn applications
+    if (application.status === "withdrawn") {
+      return res.status(400).json({ msg: "Cannot reject a withdrawn application" });
+    }
 
-		res.json({ msg: "Application rejected", application });
-	} catch (err) {
-		res.status(500).json({ msg: "Error rejecting application", error: err.message });
-	}
+    // ✅ Reject this application
+    application.status = "rejected";
+    await application.save();
+
+    // ✅ Optional: Check if all applications for this job are withdrawn/rejected
+    const remainingApps = await Application.find({
+      job: application.job._id,
+      status: { $nin: ["withdrawn", "rejected"] },
+    });
+
+    if (remainingApps.length === 0) {
+      // No active applications left — reset job to "New"
+      const job = await Job.findById(application.job._id);
+      if (job.status !== "Completed") {
+        job.status = "New";
+        await job.save();
+      }
+    }
+
+    res.json({ msg: "Application rejected", application });
+  } catch (err) {
+    res.status(500).json({ msg: "Error rejecting application", error: err.message });
+  }
 };
+
 exports.withdrawApplication = async (req, res) => {
 	try {
 		const vendorId = req.user.id; // ✅ from your auth middleware

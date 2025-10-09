@@ -1,7 +1,7 @@
 const Vendor = require("../../models/vendorSchema");
 const Application = require("../../models/Application");
 const Job = require("../../models/Job");
-const Feedback = require("../../models/FeedbackSchema");
+const Feedback = require("../../models/FeedbackSchema.js");
 
 exports.getMyApplications = async (req, res) => {
 	try {
