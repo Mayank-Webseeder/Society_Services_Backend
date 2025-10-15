@@ -93,6 +93,7 @@ exports.getJobApplicants = async (req, res) => {
 			.select("applicationType status vendor");
 
 		const result = applications.map((app) => ({
+			applicationId: app._id, 
 			name: app.vendor.name,
 			email: app.vendor.email,
 			phone: app.vendor.phone,
