@@ -58,42 +58,18 @@ exports.updateVendorProfile = async (req, res) => {
 			"experience",
 			"services",
 			"address",
-			"workingDays",
-			"workingHours",
 			"location",
 			"paymentMethods",
 			"idProof",
 			"gender",
+			"email"
 		];
 
 		const updates = {};
-		const validDays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-
+		
 		for (const key of allowedFields) {
 			if (req.body[key] !== undefined) {
-				// ✅ Convert workingDays array to object
-				if (key === "workingDays") {
-					const wd = req.body.workingDays;
-					let workingDaysObj = {};
-
-					if (Array.isArray(wd)) {
-						validDays.forEach((day) => {
-							workingDaysObj[day] = wd.includes(day);
-						});
-					} else if (typeof wd === "object") {
-						validDays.forEach((day) => {
-							workingDaysObj[day] = !!wd[day];
-						});
-					} else {
-						validDays.forEach((day) => {
-							workingDaysObj[day] = false;
-						});
-					}
-
-					updates.workingDays = workingDaysObj;
-				} else {
 					updates[key] = req.body[key];
-				}
 			}
 		}
 

@@ -146,7 +146,7 @@ router.post("/:applicationId/approve", authMiddleware, authorizeRoles("society")
  *       401:
  *         description: Unauthorized
  */
-router.post("/job/:jobId/complete", authMiddleware, authorizeRoles("society"),markJobComplete);
+// router.post("/job/:jobId/complete", authMiddleware, authorizeRoles("society"),markJobComplete);
 
 /**
  * @swagger

@@ -12,6 +12,11 @@ exports.applyToJob = async (req, res) => {
 		const job = await Job.findById(jobId);
 		if (!job) return res.status(404).json({ msg: "Job not found" });
 
+		// ✅ Prevent applying if job is already completed
+		if (job.status === "Completed") {
+			return res.status(400).json({ msg: "Cannot apply. This job is already completed." });
+		}
+
 		const existing = await Application.findOne({ job: jobId, vendor: req.user.id });
 		if (existing) {
 			return res.status(400).json({ msg: "Already applied or shown interest for this job" });
@@ -37,19 +42,22 @@ exports.applyToJob = async (req, res) => {
 
 // 🔹 Vendor shows interest (button click, no quotation)
 exports.showInterestInJob = async (req, res) => {
-	// console.log("heelllooo");
-	//  console.log(req.body.message);
 	try {
 		const jobId = req.params.id;
 
 		const job = await Job.findById(jobId);
 		if (!job) return res.status(404).json({ msg: "Job not found" });
 
+		// ✅ Prevent showing interest if job is completed
+		if (job.status === "Completed") {
+			return res.status(400).json({ msg: "Cannot show interest. This job is already completed." });
+		}
+
 		const existing = await Application.findOne({ job: jobId, vendor: req.user.id });
 		if (existing) {
 			return res.status(400).json({ msg: "Already applied or shown interest for this job" });
 		}
-		// console.log(req.body);
+
 		const application = new Application({
 			job: jobId,
 			vendor: req.user.id,
@@ -67,6 +75,7 @@ exports.showInterestInJob = async (req, res) => {
 	}
 };
 
+
 // 🔹 Society views all applicants
 exports.getJobApplicants = async (req, res) => {
 	try {
@@ -79,7 +88,7 @@ exports.getJobApplicants = async (req, res) => {
 			return res.status(403).json({ msg: "Unauthorized" });
 		}
 
-		const applications = await Application.find({ job: jobId ,status: { $ne: "withdrawn" },})
+		const applications = await Application.find({ job: jobId, status: { $ne: "withdrawn" } })
 			.populate("vendor", "name email phone")
 			.select("applicationType status vendor");
 
@@ -99,64 +108,60 @@ exports.getJobApplicants = async (req, res) => {
 
 // ✅ Approve a vendor application
 exports.approveApplication = async (req, res) => {
-  try {
-    const { applicationId } = req.params;
-
-    const application = await Application.findById(applicationId).populate("job");
-    if (!application) return res.status(404).json({ msg: "Application not found" });
-
-    // ✅ Society ownership check
-    if (application.job.society.toString() !== req.user.id) {
-      return res.status(403).json({ msg: "Unauthorized" });
-    }
-
-    // ✅ Prevent approving withdrawn applications
-    if (application.status === "withdrawn") {
-      return res.status(400).json({ msg: "Cannot approve a withdrawn application" });
-    }
-
-    // ✅ Approve current application
-    application.status = "approved";
-    await application.save();
-
-    // ✅ Reject all other applications for the same job
-    await Application.updateMany(
-      { job: application.job._id, _id: { $ne: application._id } },
-      { $set: { status: "rejected" } }
-    );
-
-    // ✅ Update job status to Ongoing
-    const job = await Job.findById(application.job._id);
-    job.status = "Ongoing";
-    await job.save();
-
-    res.json({ msg: "Application approved. Job is now Ongoing", application });
-  } catch (err) {
-    res.status(500).json({ msg: "Error approving application", error: err.message });
-  }
-};
-
-
-// ✅ Mark job as completed
-exports.markJobComplete = async (req, res) => {
 	try {
-		const { jobId } = req.params;
+		const { applicationId } = req.params;
 
-		const job = await Job.findById(jobId);
-		if (!job) return res.status(404).json({ msg: "Job not found" });
+		const application = await Application.findById(applicationId).populate("job");
+		if (!application) return res.status(404).json({ msg: "Application not found" });
 
-		if (job.society.toString() !== req.user.id) {
+		// ✅ Society ownership check
+		if (application.job.society.toString() !== req.user.id) {
 			return res.status(403).json({ msg: "Unauthorized" });
 		}
 
+		// ✅ Prevent approving withdrawn applications
+		if (application.status === "withdrawn") {
+			return res.status(400).json({ msg: "Cannot approve a withdrawn application" });
+		}
+
+		// ✅ Approve current application
+		application.status = "approved";
+		await application.save();
+
+		// ✅ Reject all other applications for the same job
+		await Application.updateMany({ job: application.job._id, _id: { $ne: application._id } }, { $set: { status: "rejected" } });
+
+		// ✅ Update job status to complete
+		const job = await Job.findById(application.job._id);
 		job.status = "Completed";
 		await job.save();
-		await Application.updateMany({ job: jobId, status: "approved" }, { $set: { status: "completed" } });
-		res.json({ msg: "Job marked as Completed" });
+
+		res.json({ msg: "Application approved. Job is now Complete", application });
 	} catch (err) {
-		res.status(500).json({ msg: "Error updating job", error: err.message });
+		res.status(500).json({ msg: "Error approving application", error: err.message });
 	}
 };
+
+// ✅ Mark job as completed now not in use
+// exports.markJobComplete = async (req, res) => {
+// 	try {
+// 		const { jobId } = req.params;
+
+// 		const job = await Job.findById(jobId);
+// 		if (!job) return res.status(404).json({ msg: "Job not found" });
+
+// 		if (job.society.toString() !== req.user.id) {
+// 			return res.status(403).json({ msg: "Unauthorized" });
+// 		}
+
+// 		job.status = "Completed";
+// 		await job.save();
+// 		await Application.updateMany({ job: jobId, status: "approved" }, { $set: { status: "completed" } });
+// 		res.json({ msg: "Job marked as Completed" });
+// 	} catch (err) {
+// 		res.status(500).json({ msg: "Error updating job", error: err.message });
+// 	}
+// };
 
 // 🔹 Get vendor application type (quotation or interest)
 exports.getVendorApplicationType = async (req, res) => {
@@ -194,7 +199,7 @@ exports.getApplicantCount = async (req, res) => {
 			return res.status(403).json({ msg: "Unauthorized" });
 		}
 
-		const applications = await Application.find({ job: jobId ,status: { $ne: "withdrawn" },});
+		const applications = await Application.find({ job: jobId, status: { $ne: "withdrawn" } });
 
 		const totalApplicants = applications.length;
 		const quotationApplications = applications.filter((a) => a.isQuotation).length;
@@ -212,46 +217,41 @@ exports.getApplicantCount = async (req, res) => {
 };
 // ✅ Society → Reject Vendor Application
 exports.rejectApplication = async (req, res) => {
-  try {
-    const { applicationId } = req.params;
+	try {
+		const { applicationId } = req.params;
 
-    const application = await Application.findById(applicationId).populate("job");
-    if (!application) return res.status(404).json({ msg: "Application not found" });
+		const application = await Application.findById(applicationId).populate("job");
+		if (!application) return res.status(404).json({ msg: "Application not found" });
 
-    // ✅ Society ownership check
-    if (application.job.society.toString() !== req.user.id) {
-      return res.status(403).json({ msg: "Unauthorized" });
-    }
+		// ✅ Society ownership check
+		if (application.job.society.toString() !== req.user.id) {
+			return res.status(403).json({ msg: "Unauthorized" });
+		}
 
-    // ✅ Prevent rejecting withdrawn applications
-    if (application.status === "withdrawn") {
-      return res.status(400).json({ msg: "Cannot reject a withdrawn application" });
-    }
+		// ✅ Prevent rejecting withdrawn applications
+		if (application.status === "withdrawn") {
+			return res.status(400).json({ msg: "Cannot reject a withdrawn application" });
+		}
 
-    // ✅ Reject this application
-    application.status = "rejected";
-    await application.save();
+		// ✅ Prevent rejection after job is completed
+		if (application.job.status !== "New") {
+			return res.status(400).json({ msg: "Cannot reject applications after job is completed." });
+		}
 
-    // ✅ Optional: Check if all applications for this job are withdrawn/rejected
-    const remainingApps = await Application.find({
-      job: application.job._id,
-      status: { $nin: ["withdrawn", "rejected"] },
-    });
+		// ✅ Mark as rejected
+		application.status = "rejected";
+		await application.save();
 
-    if (remainingApps.length === 0) {
-      // No active applications left — reset job to "New"
-      const job = await Job.findById(application.job._id);
-      if (job.status !== "Completed") {
-        job.status = "New";
-        await job.save();
-      }
-    }
+		// ✅ (Optional) No need to reset job to "New"
+		// We only mark job "Completed" when one is approved.
+		// Removing this avoids accidental reopen of completed jobs.
 
-    res.json({ msg: "Application rejected", application });
-  } catch (err) {
-    res.status(500).json({ msg: "Error rejecting application", error: err.message });
-  }
+		res.json({ msg: "Application rejected successfully", application });
+	} catch (err) {
+		res.status(500).json({ msg: "Error rejecting application", error: err.message });
+	}
 };
+
 
 exports.withdrawApplication = async (req, res) => {
 	try {
@@ -269,45 +269,21 @@ exports.withdrawApplication = async (req, res) => {
 		if (application.vendor.toString() !== vendorId) {
 			return res.status(403).json({ msg: "You are not authorized to withdraw this application." });
 		}
-
+		
 		// 3️⃣ Prevent withdrawing already withdrawn or processed applications
-		if (["withdrawn", "rejected", "approved"].includes(application.status)) {
+		if (["withdrawn"].includes(application.status)) {
 			return res.status(400).json({
 				msg: `Cannot withdraw. This application is already ${application.status}.`,
 			});
 		}
-
-		const wasApproved = application.status === "approved"; // ✅ key check
+		if (["approved", "rejected"].includes(application.status)) {
+			return res.status(401).json({
+				msg: `Cannot withdraw after the job is completed.`,
+			});
+		}
 
 		application.status = "withdrawn";
 		await application.save();
-
-		// 2. Only if the withdrawn application was approved
-		if (wasApproved) {
-			// Revert job status to New
-			const job = await Job.findById(application.job);
-			job.status = "New";
-			await job.save();
-
-			// Reset all previously rejected applications to approval pending
-			await Application.updateMany({ job: job._id, status: "rejected" }, { status: "approval pending" });
-		}
-
-		// (Optional) — revert job status if needed
-		const job = await Job.findById(application.job);
-
-		if (job && (job.status === "Ongoing" || job.status === "New")) {
-			const remainingApps = await Application.find({
-				job: job._id,
-				status: { $nin: ["withdrawn", "rejected"] }, // only active ones
-			});
-
-			if (remainingApps.length === 0) {
-				job.status = "New"; // No active or approved applications left
-				await job.save();
-			}
-		}
-
 		return res.status(200).json({ msg: "Application withdrawn successfully." });
 	} catch (err) {
 		console.error("Error withdrawing application:", err);

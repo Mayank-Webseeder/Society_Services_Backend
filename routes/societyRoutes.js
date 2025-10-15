@@ -8,7 +8,6 @@ const { getMyPostedJobs, getJobById, deleteJob } = require("../controllers/jobCo
 const {
 	getJobApplicants,
 	approveApplication,
-	markJobComplete,
 	getVendorApplicationType,
 	rejectApplication,
 	getApplicantCount,
@@ -199,7 +198,7 @@ router.post("/applications/:applicationId/reject", authenticate, authorizeRoles(
  *       200:
  *         description: Job marked completed
  */
-router.post("/jobs/:jobId/complete", authenticate, authorizeRoles("society"), markJobComplete);
+// router.post("/jobs/:jobId/complete", authenticate, authorizeRoles("society"), markJobComplete);
 
 /**
  * @swagger

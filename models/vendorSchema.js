@@ -41,20 +41,7 @@ const vendorSchema = new mongoose.Schema(
 			default: null,
 		},
 
-		workingDays: {
-			monday: { type: Boolean, default: false },
-			tuesday: { type: Boolean, default: false },
-			wednesday: { type: Boolean, default: false },
-			thursday: { type: Boolean, default: false },
-			friday: { type: Boolean, default: false },
-			saturday: { type: Boolean, default: false },
-			sunday: { type: Boolean, default: false },
-		},
-
-		workingHours: {
-			from: { type: String, default: null },
-			upto: { type: String, default: null },
-		},
+		
 
 		experience: {
 			type: String,

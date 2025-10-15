@@ -229,23 +229,7 @@ exports.createVendorProfile = async (req, res) => {
 		// Working days
 		// console.log("Incoming workingDays:", req.body.workingDays, typeof req.body.workingDays);
 
-		if (req.body.workingDays) {
-			const validDays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-			const workingDaysObj = {};
-
-			if (Array.isArray(req.body.workingDays)) {
-				// Payload: ["monday", "saturday"]
-				validDays.forEach((day) => {
-					workingDaysObj[day] = req.body.workingDays.includes(day);
-				});
-			} else if (typeof req.body.workingDays === "object") {
-				// Payload: { monday: true, saturday: true }
-				validDays.forEach((day) => {
-					workingDaysObj[day] = !!req.body.workingDays[day];
-				});
-			}
-			updateData.workingDays = workingDaysObj; // ✅ overwrite with final object
-		}
+		
 
 		// idProof
 		if (req.idProofFile) {
