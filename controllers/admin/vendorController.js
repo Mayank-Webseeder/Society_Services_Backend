@@ -85,3 +85,14 @@ exports.getVendorsGroupedByRole = async (req, res) => {
     res.status(500).json({ msg: "Failed to group vendors by role", error: err.message });
   }
 };
+const servicesList = require("../../constants/vendorRoles");
+exports.getAllServices = async (req, res) => {
+  try {
+    res.status(200).json({
+      success: true,
+      services: servicesList
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, msg: "Failed to fetch services", error: err.message });
+  }
+};

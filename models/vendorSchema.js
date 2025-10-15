@@ -47,10 +47,6 @@ const vendorSchema = new mongoose.Schema(
 			type: String,
 			default: ">1 years",
 		},
-		gender: {
-			type: String,
-			enum: ["Male", "Female", "Prefer not to say"],
-		},
 		contactNumber: {
 			type: String,
 			required: true,

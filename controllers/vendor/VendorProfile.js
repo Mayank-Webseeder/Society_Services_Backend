@@ -61,7 +61,6 @@ exports.updateVendorProfile = async (req, res) => {
 			"location",
 			"paymentMethods",
 			"idProof",
-			"gender",
 			"email"
 		];
 
