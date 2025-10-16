@@ -5,7 +5,6 @@ const {
   showInterestInJob,
   getJobApplicants,
   approveApplication,
-  markJobComplete,
   getVendorApplicationType
 } = require("../controllers/applicationController");
 

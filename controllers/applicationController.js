@@ -88,7 +88,7 @@ exports.getJobApplicants = async (req, res) => {
 			return res.status(403).json({ msg: "Unauthorized" });
 		}
 
-		const applications = await Application.find({ job: jobId, status: { $ne: "withdrawn" } })
+		const applications = await Application.find({ job: jobId})
 			.populate("vendor", "name email phone")
 			.select("applicationType status vendor");
 
@@ -120,10 +120,7 @@ exports.approveApplication = async (req, res) => {
 			return res.status(403).json({ msg: "Unauthorized" });
 		}
 
-		// ✅ Prevent approving withdrawn applications
-		if (application.status === "withdrawn") {
-			return res.status(400).json({ msg: "Cannot approve a withdrawn application" });
-		}
+		
 
 		// ✅ Approve current application
 		application.status = "approved";
@@ -200,7 +197,7 @@ exports.getApplicantCount = async (req, res) => {
 			return res.status(403).json({ msg: "Unauthorized" });
 		}
 
-		const applications = await Application.find({ job: jobId, status: { $ne: "withdrawn" } });
+		const applications = await Application.find({ job: jobId });
 
 		const totalApplicants = applications.length;
 		const quotationApplications = applications.filter((a) => a.isQuotation).length;
@@ -229,10 +226,7 @@ exports.rejectApplication = async (req, res) => {
 			return res.status(403).json({ msg: "Unauthorized" });
 		}
 
-		// ✅ Prevent rejecting withdrawn applications
-		if (application.status === "withdrawn") {
-			return res.status(400).json({ msg: "Cannot reject a withdrawn application" });
-		}
+		
 
 		// ✅ Prevent rejection after job is completed
 		if (application.job.status !== "New") {
@@ -254,40 +248,4 @@ exports.rejectApplication = async (req, res) => {
 };
 
 
-exports.withdrawApplication = async (req, res) => {
-	try {
-		const vendorId = req.user.id; // ✅ from your auth middleware
-		const { applicationId } = req.params; // ✅ pass ID in route /withdraw/:applicationId
 
-		// 1️⃣ Find the application
-		const application = await Application.findById(applicationId);
-
-		if (!application) {
-			return res.status(404).json({ msg: "Application not found" });
-		}
-
-		// 2️⃣ Ensure the vendor owns this application
-		if (application.vendor.toString() !== vendorId) {
-			return res.status(403).json({ msg: "You are not authorized to withdraw this application." });
-		}
-		
-		// 3️⃣ Prevent withdrawing already withdrawn or processed applications
-		if (["withdrawn"].includes(application.status)) {
-			return res.status(400).json({
-				msg: `Cannot withdraw. This application is already ${application.status}.`,
-			});
-		}
-		if (["approved", "rejected"].includes(application.status)) {
-			return res.status(401).json({
-				msg: `Cannot withdraw after the job is completed.`,
-			});
-		}
-
-		application.status = "withdrawn";
-		await application.save();
-		return res.status(200).json({ msg: "Application withdrawn successfully." });
-	} catch (err) {
-		console.error("Error withdrawing application:", err);
-		res.status(500).json({ msg: "Server error", error: err.message });
-	}
-};
