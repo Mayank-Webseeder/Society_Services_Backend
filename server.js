@@ -46,13 +46,21 @@ app.use("/uploads/profilePictures", express.static(path.join(__dirname, "middlew
 // ✅ Swagger API docs
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/uploads/idProof", (req, res, next) => {
-  // Force browser to open instead of downloading
-  res.setHeader("Content-Disposition", "inline");
-  next();
+	// Force browser to open instead of downloading
+	res.setHeader("Content-Disposition", "inline");
+	next();
 });
 app.use(
 	"/uploads/quotations",
 	express.static(path.join(__dirname, "middleware/uploads/quotations"), {
+		setHeaders: (res) => {
+			res.setHeader("Content-Disposition", "inline");
+		},
+	})
+);
+app.use(
+	"/uploads/helpImages",
+	express.static(path.join(__dirname, "middleware/uploads/helpImages"), {
 		setHeaders: (res) => {
 			res.setHeader("Content-Disposition", "inline");
 		},

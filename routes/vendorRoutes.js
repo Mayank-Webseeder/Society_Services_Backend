@@ -21,8 +21,9 @@ const { authenticate, authorizeRoles } = require("../middleware/roleBasedAuth");
 const uploadIDProof = require("../middleware/uploadIDProof");
 const uploadProfilePicture = require("../middleware/uploadProfilePicture.js");
 const { signUpNotVerified } = require("../controllers/notVerifiedAuth");
-const { getMyApplications, getVendorDashboard, getVendorProfile, updateVendorProfile,getFeedbacks,getRating } = require("../controllers/vendor/VendorProfile");
+const { getMyApplications, getVendorDashboard, getVendorProfile, updateVendorProfile,getFeedbacks,getRating, createSupportRequest } = require("../controllers/vendor/VendorProfile");
 const { getAllServices } = require("../controllers/admin/vendorController.js");
+const uploadHelpImage = require("../middleware/uploadHelpImage.js");
 
 /**
  * @swagger
@@ -307,6 +308,7 @@ router.get("/profile", authenticate, authorizeRoles("vendor"), getVendorProfile)
 router.put("/profile", authenticate, authorizeRoles("vendor"), uploadProfilePicture, uploadIDProof, updateVendorProfile);
 router.get("/getRating", authenticate, getRating);
 router.get("/services", getAllServices);
+router.post("/support",authenticate,authorizeRoles("vendor"),uploadHelpImage,createSupportRequest);
 // GET vendor's own feedbacks
 router.get("/getFeedbacks", authenticate, getFeedbacks);
 module.exports = router;

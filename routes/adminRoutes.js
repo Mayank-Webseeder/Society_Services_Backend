@@ -26,6 +26,7 @@ const {
   getPendingSocieties,
   getApprovedSocieties,
 } = require("../controllers/admin/societyController");
+const { getAllSupportRequests, updateSupportStatus } = require("../controllers/admin/SupportStatusController");
 
 /**
  * @swagger
@@ -272,5 +273,6 @@ router.get("/approved-societies", authenticate, authorizeRoles("admin"), getAppr
  *         description: Job statistics retrieved
  */
 router.get("/jobs/stats", authenticate, authorizeRoles("admin"), getJobStats);
-
+router.get("/support-requests", authenticate, authorizeRoles("admin"), getAllSupportRequests);
+router.patch("/support-requests/:id/status", authenticate, authorizeRoles("admin"), updateSupportStatus);
 module.exports = router;

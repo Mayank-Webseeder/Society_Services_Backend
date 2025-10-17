@@ -2,7 +2,7 @@ const Vendor = require("../../models/vendorSchema");
 const Application = require("../../models/Application");
 const Job = require("../../models/Job");
 const Feedback = require("../../models/FeedbackSchema.js");
-
+const SupportRequest = require("../../models/SupportSchema.js");
 exports.getMyApplications = async (req, res) => {
 	try {
 		const applications = await Application.find({ vendor: req.user.id }).populate("job");
@@ -118,4 +118,30 @@ exports.getFeedbacks = async (req, res) => {
 		console.error("Error fetching vendor feedbacks:", err);
 		res.status(500).json({ msg: "Failed to fetch feedbacks", error: err.message });
 	}
+};
+exports.createSupportRequest = async (req, res) => {
+  try {
+	  const { message } = req.body;
+	  const vendor = req.user.id;
+    const imageUrl = req.body.imageUrl || null; // set by uploadHelpImage middleware
+
+    if (!message) {
+      return res.status(400).json({ success: false, message: "Message is required" });
+    }
+
+    const supportRequest = await SupportRequest.create({
+      vendor,
+      message,
+      imageUrl,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Support request submitted successfully",
+      supportRequest,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server error", error: err.message });
+  }
 };
