@@ -75,7 +75,6 @@ exports.showInterestInJob = async (req, res) => {
 	}
 };
 
-
 // 🔹 Society views all applicants
 exports.getJobApplicants = async (req, res) => {
 	try {
@@ -88,12 +87,11 @@ exports.getJobApplicants = async (req, res) => {
 			return res.status(403).json({ msg: "Unauthorized" });
 		}
 
-		const applications = await Application.find({ job: jobId})
+		const applications = await Application.find({ job: jobId })
 			.populate("vendor", "name email phone")
 			.select("applicationType status vendor");
-
 		const result = applications.map((app) => ({
-			applicationId: app._id, 
+			applicationId: app._id,
 			name: app.vendor.name,
 			email: app.vendor.email,
 			phone: app.vendor.phone,
@@ -120,10 +118,9 @@ exports.approveApplication = async (req, res) => {
 			return res.status(403).json({ msg: "Unauthorized" });
 		}
 
-		
-
 		// ✅ Approve current application
 		application.status = "approved";
+
 		await application.save();
 
 		// ✅ Reject all other applications for the same job
@@ -132,6 +129,7 @@ exports.approveApplication = async (req, res) => {
 		// ✅ Update job status to complete
 		const job = await Job.findById(application.job._id);
 		job.status = "Completed";
+		job.completedAt = new Date();
 		await job.save();
 
 		res.json({ msg: "Application approved. Job is now Complete", application });
@@ -226,8 +224,6 @@ exports.rejectApplication = async (req, res) => {
 			return res.status(403).json({ msg: "Unauthorized" });
 		}
 
-		
-
 		// ✅ Prevent rejection after job is completed
 		if (application.job.status !== "New") {
 			return res.status(400).json({ msg: "Cannot reject applications after job is completed." });
@@ -246,6 +242,3 @@ exports.rejectApplication = async (req, res) => {
 		res.status(500).json({ msg: "Error rejecting application", error: err.message });
 	}
 };
-
-
-

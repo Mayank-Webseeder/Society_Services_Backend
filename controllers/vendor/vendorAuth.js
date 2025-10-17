@@ -55,7 +55,7 @@ exports.signupVendor = async (req, res) => {
 
 		res.status(201).json({
 			authToken: token,
-			msg: "Vendor registered successfully. Awaiting admin approval.",
+			msg: "Vendor registered successfully.",
 		});
 	} catch (err) {
 		res.status(500).json({ msg: "Server error", error: err.message });
