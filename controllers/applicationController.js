@@ -120,7 +120,7 @@ exports.approveApplication = async (req, res) => {
 
 		// ✅ Approve current application
 		application.status = "approved";
-
+		
 		await application.save();
 
 		// ✅ Reject all other applications for the same job
@@ -131,7 +131,7 @@ exports.approveApplication = async (req, res) => {
 		job.status = "Completed";
 		job.completedAt = new Date();
 		await job.save();
-
+		await application.populate("job");
 		res.json({ msg: "Application approved. Job is now Complete", application });
 	} catch (err) {
 		res.status(500).json({ msg: "Error approving application", error: err.message });
