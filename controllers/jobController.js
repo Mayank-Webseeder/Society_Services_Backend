@@ -96,7 +96,7 @@ exports.getNearbyJobs = async (req, res) => {
 		const { quotationRequired } = req.query;
 		const vendorId = req.user.id;
 
-		// 1️⃣ Get vendor location from DB
+		// 1️⃣ Get vendor location
 		const vendor = await Vendor.findById(vendorId).select("location");
 		if (!vendor || !vendor.location?.GeoLocation?.latitude || !vendor.location?.GeoLocation?.longitude) {
 			return res.status(400).json({ msg: "Vendor location not set in database" });
@@ -104,13 +104,11 @@ exports.getNearbyJobs = async (req, res) => {
 		const lon = parseFloat(vendor.location.GeoLocation.longitude);
 		const lat = parseFloat(vendor.location.GeoLocation.latitude);
 
+		// 2️⃣ Base filter
 		const filter = {
 			geo: {
 				$near: {
-					$geometry: {
-						type: "Point",
-						coordinates: [lon, lat],
-					},
+					$geometry: { type: "Point", coordinates: [lon, lat] },
 					$maxDistance: 20000, // 20 km
 				},
 			},
@@ -121,9 +119,14 @@ exports.getNearbyJobs = async (req, res) => {
 		if (quotationRequired === "true") filter.quotationRequired = true;
 		else if (quotationRequired === "false") filter.quotationRequired = false;
 
-		const jobs = await Job.find(filter);
+		// 3️⃣ Fetch jobs + populate society
+		const jobs = await Job.find(filter)
+			.populate("society", "username email buildingName address residentsCount") // only needed fields
+			.lean();
+
 		const jobIds = jobs.map((job) => job._id);
 
+		// 4️⃣ Fetch vendor's existing applications
 		const vendorApplications = await Application.find({
 			vendor: vendorId,
 			job: { $in: jobIds },
@@ -137,6 +140,7 @@ exports.getNearbyJobs = async (req, res) => {
 			};
 		});
 
+		// 5️⃣ Final formatted jobs
 		const formattedJobs = jobs.map((job) => ({
 			_id: job._id,
 			title: job.title,
@@ -153,16 +157,26 @@ exports.getNearbyJobs = async (req, res) => {
 				? new Date(job.completedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
 				: null,
 			applicationStatus: statusMap[job._id.toString()] || null,
-			postedAt: new Date(job.createdAt).toLocaleString("en-IN", {
-				timeZone: "Asia/Kolkata",
-			}),
+			postedAt: new Date(job.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
+			society: job.society
+				? {
+						_id: job.society._id,
+						username: job.society.username,
+						email: job.society.email,
+						buildingName: job.society.buildingName,
+						address: job.society.address,
+						residentsCount: job.society.residentsCount,
+				  }
+				: null,
 		}));
 
 		res.json(formattedJobs);
 	} catch (err) {
+		console.error("Error in getNearbyJobs:", err);
 		res.status(500).json({ msg: "Error fetching nearby jobs", error: err.message });
 	}
 };
+
 //68e4ad9208f45e6db1ee7a46
 
 // 3. Get Single Job by ID

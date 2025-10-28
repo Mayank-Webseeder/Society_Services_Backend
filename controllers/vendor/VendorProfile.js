@@ -5,12 +5,23 @@ const Feedback = require("../../models/FeedbackSchema.js");
 const SupportRequest = require("../../models/SupportSchema.js");
 exports.getMyApplications = async (req, res) => {
 	try {
-		const applications = await Application.find({ vendor: req.user.id }).populate("job");
+		const applications = await Application.find({ vendor: req.user.id })
+			.populate({
+				path: "job",
+				populate: {
+					path: "society",
+					select: "username email buildingName address residentsCount location"
+				}
+			})
+			.lean();
+
 		res.json(applications);
 	} catch (err) {
+		console.error("Error in getMyApplications:", err);
 		res.status(500).json({ msg: "Server error", error: err.message });
 	}
 };
+
 exports.getVendorDashboard = async (req, res) => {
 	try {
 		const totalApplications = await Application.countDocuments({ vendor: req.user.id });
