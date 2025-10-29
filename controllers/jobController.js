@@ -3,7 +3,7 @@ const Application = require("../models/Application");
 const Vendor = require("../models/vendorSchema");
 const Notification = require("../models/Notification");
 const { sendJobNotification } = require("../utils/sendJobNotification");
-// const Society = require("../models/societySchema");
+const Society = require("../models/SocietySchema");
 
 // 1. Society Creates a Job
 exports.createJob = async (req, res) => {
@@ -251,5 +251,101 @@ exports.deleteJob = async (req, res) => {
 		res.json({ msg: "Job deleted successfully" });
 	} catch (err) {
 		res.status(500).json({ msg: "Server error", error: err.message });
+	}
+};
+// const Society = require("../models/Society");
+// const Job = require("../models/Job");
+
+exports.getSocietyDetails = async (req, res) => {
+	try {
+		const societyId = req.user.id; // assuming JWT auth adds req.user.id
+		const society = await Society.findById(societyId).select(
+			"username buildingName email address profilePicture residentsCount location isApproved createdAt updatedAt"
+		);
+
+		if (!society) return res.status(404).json({ msg: "Society not found" });
+
+		// Fetch all jobs for this society
+		const jobs = await Job.find({ society: societyId });
+
+		// Count jobs based on status
+		const totalJobsPosted = jobs.filter((job) => ["New", "Completed", "Expired"].includes(job.status)).length;
+
+		const activeJobsCount = jobs.filter((job) => job.status === "Completed").length;
+
+		// Prepare clean response
+		const response = {
+			id: society._id ?? "N/A",
+			username: society.username ?? "N/A",
+			name: society.buildingName ?? "N/A",
+			location: society.location?.default ?? "N/A",
+			address: society.address ?? "N/A",
+			email: society.email ?? "N/A",
+			residentsCount: society.residentsCount ?? "N/A",
+			profilePicture: society.profilePicture ?? "N/A",
+			totalJobsPosted,
+			activeJobsCount,
+			status: society.isApproved ? "Active" : "Pending",
+			isApproved: society.isApproved ?? false,
+			createdAt: society.createdAt ?? "N/A",
+			updatedAt: society.updatedAt ?? "N/A",
+		};
+
+		res.json({ society: response });
+	} catch (err) {
+		console.error("Error in getSocietyOverview:", err);
+		res.status(500).json({
+			msg: "Failed to fetch society overview",
+			error: err.message,
+		});
+	}
+};
+
+exports.getActiveSocientyJobs = async (req, res) => {
+	try {
+		const societyId = req.user.id; // from JWT/auth middleware
+
+		// Fetch only "Completed" jobs for this society
+		const activeJobs = await Job.find({
+			society: societyId,
+			status: "Completed",
+		}).select(
+			"title type requiredExperience details contactNumber location offeredPrice scheduledFor quotationRequired completedAt"
+		);
+
+		if (!activeJobs || activeJobs.length === 0) {
+			return res.status(200).json({ msg: "No active (completed) jobs found", activeJobs: [] });
+		}
+
+		// Optional: format jobs if you want cleaner response
+		const formattedJobs = activeJobs.map((job) => ({
+			jobId: job._id,
+			title: job.title,
+			type: job.type,
+			requiredExperience: job.requiredExperience,
+			details: job.details,
+			contactNumber: job.contactNumber,
+			location: {
+				latitude: job.location.latitude,
+				longitude: job.location.longitude,
+				googleMapLink: job.location.googleMapLink,
+			},
+			offeredPrice: job.offeredPrice,
+			scheduledFor: job.scheduledFor,
+			quotationRequired: job.quotationRequired,
+			completedAt: job.completedAt,
+		}));
+
+		res.status(200).json({
+			msg: "Active (Completed) jobs fetched successfully",
+			totalActiveJobs: formattedJobs.length,
+			activeJobs: formattedJobs,
+		});
+	} catch (err) {
+		console.error("Error in getActiveJobs:", err);
+		res.status(500).json({
+			msg: "Failed to fetch active jobs",
+			error: err.message,
+		});
 	}
 };

@@ -25,8 +25,12 @@ const {
   approveSociety,
   getPendingSocieties,
   getApprovedSocieties,
+  getSocietyDetailsById,
+  getAllJobsBySocietyId,
+  getAllSocietiesWithJobStats,
 } = require("../controllers/admin/societyController");
 const { getAllSupportRequests, updateSupportStatus } = require("../controllers/admin/SupportStatusController");
+// const { getSocietyDetails } = require("../controllers/jobController");
 
 /**
  * @swagger
@@ -275,4 +279,7 @@ router.get("/approved-societies", authenticate, authorizeRoles("admin"), getAppr
 router.get("/jobs/stats", authenticate, authorizeRoles("admin"), getJobStats);
 router.get("/support-requests", authenticate, authorizeRoles("admin"), getAllSupportRequests);
 router.patch("/support-requests/:id/status", authenticate, authorizeRoles("admin"), updateSupportStatus);
+router.get("/society-directory", authenticate, authorizeRoles("admin"), getAllSocietiesWithJobStats);
+router.get("/society-directory/:societyId", authenticate, authorizeRoles("admin"), getSocietyDetailsById);
+router.get("/society-directory/:societyId/all-jobs", authenticate, authorizeRoles("admin"),getAllJobsBySocietyId );
 module.exports = router;
