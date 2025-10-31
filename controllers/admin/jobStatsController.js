@@ -54,3 +54,6 @@ exports.getJobStats = async (req, res) => {
     res.status(500).json({ msg: "Failed to fetch job stats", error: err.message });
   }
 };
+const Services = require("../../models/Services");
+
+// ➕ Add one or more services

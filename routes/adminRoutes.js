@@ -19,6 +19,7 @@ const {
   blacklistVendor,
   getBlacklistedVendors,
   getAllVendors,
+  getAllServices,
 } = require("../controllers/admin/vendorController");
 
 const {
@@ -30,6 +31,7 @@ const {
   getAllSocietiesWithJobStats,
 } = require("../controllers/admin/societyController");
 const { getAllSupportRequests, updateSupportStatus } = require("../controllers/admin/SupportStatusController");
+const { addServices, deleteServices } = require("../controllers/admin/ServicesHandle");
 // const { getSocietyDetails } = require("../controllers/jobController");
 
 /**
@@ -281,5 +283,8 @@ router.get("/support-requests", authenticate, authorizeRoles("admin"), getAllSup
 router.patch("/support-requests/:id/status", authenticate, authorizeRoles("admin"), updateSupportStatus);
 router.get("/society-directory", authenticate, authorizeRoles("admin"), getAllSocietiesWithJobStats);
 router.get("/society-directory/:societyId", authenticate, authorizeRoles("admin"), getSocietyDetailsById);
-router.get("/society-directory/:societyId/all-jobs", authenticate, authorizeRoles("admin"),getAllJobsBySocietyId );
+router.get("/society-directory/:societyId/all-jobs", authenticate, authorizeRoles("admin"), getAllJobsBySocietyId);
+router.post("/add-service", authenticate, authorizeRoles("admin"), addServices);
+router.delete("/delete-service/:serviceId", authenticate, authorizeRoles("admin"), deleteServices);
+router.get("/services", getAllServices);
 module.exports = router;

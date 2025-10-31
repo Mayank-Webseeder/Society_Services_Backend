@@ -10,7 +10,7 @@ const adminRoutes = require("./routes/adminRoutes");
 const vendorRoutes = require("./routes/vendorRoutes");
 const societyRoutes = require("./routes/societyRoutes");
 const swaggerSpec = require("./swaggerOptions");
-
+const { refreshServices } = require("./utils/fetchServices");
 dotenv.config();
 
 const app = express();
@@ -84,6 +84,7 @@ mongoose.connect(process.env.MONGO_URI)
 	.then(() => {
 		console.log("✅ MongoDB connected");
 		app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
+		refreshServices(); // Load services on startup
 	})
 	.catch((err) => {
 		console.error("❌ MongoDB connection error:", err);

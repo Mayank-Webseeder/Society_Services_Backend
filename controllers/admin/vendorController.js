@@ -1,5 +1,5 @@
 const Vendor = require("../../models/vendorSchema");
-
+const Services = require("../../models/Services");
 // ✅ Get pending vendors
 exports.getPendingVendors = async (req, res) => {
   try {
@@ -88,11 +88,9 @@ exports.getVendorsGroupedByRole = async (req, res) => {
 const servicesList = require("../../constants/vendorRoles");
 exports.getAllServices = async (req, res) => {
   try {
-    res.status(200).json({
-      success: true,
-      services: servicesList
-    });
+    const services = await Services.find().sort({ name: 1 });
+    res.json({ total: services.length, services });
   } catch (err) {
-    res.status(500).json({ success: false, msg: "Failed to fetch services", error: err.message });
+    res.status(500).json({ msg: "Failed to fetch services", error: err.message });
   }
 };
