@@ -20,6 +20,7 @@ const {
   getBlacklistedVendors,
   getAllVendors,
   getAllServices,
+  getAllVendorsProfile,
 } = require("../controllers/admin/vendorController");
 
 const {
@@ -285,6 +286,7 @@ router.get("/society-directory", authenticate, authorizeRoles("admin"), getAllSo
 router.get("/society-directory/:societyId", authenticate, authorizeRoles("admin"), getSocietyDetailsById);
 router.get("/society-directory/:societyId/all-jobs", authenticate, authorizeRoles("admin"), getAllJobsBySocietyId);
 router.post("/add-service", authenticate, authorizeRoles("admin"), addServices);
-router.delete("/delete-service/:serviceId", authenticate, authorizeRoles("admin"), deleteServices);
+router.delete("/delete-service", authenticate, authorizeRoles("admin"), deleteServices);
 router.get("/services", getAllServices);
+router.get("/all-vendors-profiles", authenticate, authorizeRoles("admin"), getAllVendorsProfile);
 module.exports = router;
