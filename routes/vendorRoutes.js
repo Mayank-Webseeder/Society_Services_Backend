@@ -12,7 +12,7 @@ const {
 	sendForgotPasswordOTP,
 } = require("../controllers/vendor/vendorAuth");
 
-const { purchaseSubscription, checkSubscriptionStatus, addServiceToSubscription } = require("../controllers/vendor/subscriptionController");
+const { purchaseSubscription, checkSubscriptionStatus, addServiceToSubscription, createRazorpayOrder, verifyRazorpayPayment, createAddServiceOrder, verifyAddServicePayment } = require("../controllers/vendor/subscriptionController");
 
 
 const { validateOTP, validateForgotPasswordOTP } = require("../middleware/thirdPartyServicesMiddleware");
@@ -24,6 +24,7 @@ const { signUpNotVerified } = require("../controllers/notVerifiedAuth");
 const { getMyApplications, getVendorDashboard, getVendorProfile, updateVendorProfile,getFeedbacks,getRating, createSupportRequest } = require("../controllers/vendor/VendorProfile");
 const { getAllServices } = require("../controllers/admin/vendorController.js");
 const uploadHelpImage = require("../middleware/uploadHelpImage.js");
+const { getAllJobs } = require("../controllers/admin/jobStatsController.js");
 
 /**
  * @swagger
@@ -180,20 +181,6 @@ router.post("/forgetPassword", validateForgotPasswordOTP, forgetPassword);
 
 /**
  * @swagger
- * /vendor/subscribe:
- *   post:
- *     summary: Purchase subscription
- *     tags: [Vendor]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Subscription purchased
- */
-router.post("/subscribe", authenticate, authorizeRoles("vendor"), purchaseSubscription);
-
-/**
- * @swagger
  * /vendor/subscription-status:
  *   get:
  *     summary: Check subscription status
@@ -206,19 +193,7 @@ router.post("/subscribe", authenticate, authorizeRoles("vendor"), purchaseSubscr
  */
 router.get("/subscription-status", authenticate, authorizeRoles("vendor"), checkSubscriptionStatus);
 
-/**
- * @swagger
- * /vendor/add-service:
- *   post:
- *     summary: Add a service to subscription (prorated)
- *     tags: [Vendor]
- *     security:
-//  *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Service added
- */
-router.post("/add-service", authenticate, authorizeRoles("vendor"), addServiceToSubscription);
+
 
 /**
  * @swagger
@@ -308,7 +283,12 @@ router.get("/profile", authenticate, authorizeRoles("vendor"), getVendorProfile)
 router.put("/profile", authenticate, authorizeRoles("vendor"), uploadProfilePicture, uploadIDProof, updateVendorProfile);
 router.get("/getRating", authenticate, getRating);
 router.get("/services", getAllServices);
-router.post("/support",authenticate,authorizeRoles("vendor"),uploadHelpImage,createSupportRequest);
+router.post("/support", authenticate, authorizeRoles("vendor"), uploadHelpImage, createSupportRequest);
+router.post("/create-order", authenticate, authorizeRoles("vendor"),createRazorpayOrder);
+router.post("/verify-payment", authenticate, authorizeRoles("vendor"), verifyRazorpayPayment);
+router.post("/add-service-order", authenticate, authorizeRoles("vendor"),createAddServiceOrder);
+router.post("/add-service-verify", authenticate,authorizeRoles("vendor"), verifyAddServicePayment);
 // GET vendor's own feedbacks
 router.get("/getFeedbacks", authenticate, getFeedbacks);
+
 module.exports = router;

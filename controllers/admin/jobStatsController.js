@@ -64,5 +64,13 @@ exports.getAllJobs = async (req, res) => {
     res.status(500).json({ msg: "Failed to fetch jobs", error: err.message });
   }
 };
-
+exports.getJobbyId = async (req, res) => {
+  try {
+    const jobId = req.params.id;
+    const jobs = await Job.findById(jobId)
+    res.json(jobs);
+  } catch (err) {
+    res.status(500).json({ msg: "Failed to fetch jobs", error: err.message });
+  }
+};
 // ➕ Add one or more services
