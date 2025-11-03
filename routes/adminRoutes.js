@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const { loginAdmin } = require("../controllers/admin/adminAuth");
-const { getJobStats, getAllJobs } = require("../controllers/admin/jobStatsController");
+const { getJobStats, getAllJobs, getJobbyId } = require("../controllers/admin/jobStatsController");
 
 const {
   getAllSubscriptions,
@@ -292,4 +292,5 @@ router.get("/services", getAllServices);
 router.get("/all-vendors-profiles", authenticate, authorizeRoles("admin"), getAllVendorsProfile);
 router.get("/vendors-profiles/:id", authenticate, authorizeRoles("admin"), getVendorsProfile);
 router.get("/all-jobs", authenticate, authorizeRoles("admin"), getAllJobs);
+router.get("/job/:id", authenticate, authorizeRoles("admin"), getJobbyId);
 module.exports = router;
