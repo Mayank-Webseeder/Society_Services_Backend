@@ -8,7 +8,6 @@ const {
 	sendSignupOTP,
 	validateContactNumber,
 	forgetPassword,
-	loginVendorUsingEmail,
 	sendForgotPasswordOTP,
 } = require("../controllers/vendor/vendorAuth");
 
@@ -110,7 +109,7 @@ router.post("/login", loginVendorUsingContact);
 router.put("/createProfile", authenticate, authorizeRoles("vendor"), uploadIDProof, createVendorProfile);
 
 /**
-//  * @swagger
+ * @swagger
  * /vendor/sendOtpEmailVerification:
  *   post:
  *     summary: Send OTP for email verification
