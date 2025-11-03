@@ -100,3 +100,14 @@ exports.getAllVendorsProfile = async (req, res) => {
 		res.status(500).json({ msg: "Failed to fetch vendors", error: err.message });
 	}
 };
+exports.getVendorsProfile = async (req, res) => {
+	try {
+		const id = req.params.id;
+		const vendors = await Vendor.findById(id).select(
+			"name email contactNumber businessName profilePicture address averageRating totalRatings experience services location idProof role isApproved isBlacklisted blacklistReason"
+		);
+		res.json(vendors);
+	} catch (err) {
+		res.status(500).json({ msg: "Failed to fetch vendors", error: err.message });
+	}
+};

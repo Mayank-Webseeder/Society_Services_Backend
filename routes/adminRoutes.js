@@ -21,6 +21,7 @@ const {
   getAllVendors,
   getAllServices,
   getAllVendorsProfile,
+  getVendorsProfile,
 } = require("../controllers/admin/vendorController");
 
 const {
@@ -289,5 +290,6 @@ router.post("/add-service", authenticate, authorizeRoles("admin"), addServices);
 router.delete("/delete-service", authenticate, authorizeRoles("admin"), deleteServices);
 router.get("/services", getAllServices);
 router.get("/all-vendors-profiles", authenticate, authorizeRoles("admin"), getAllVendorsProfile);
+router.get("/vendors-profiles/:id", authenticate, authorizeRoles("admin"), getVendorsProfile);
 router.get("/all-jobs", authenticate, authorizeRoles("admin"), getAllJobs);
 module.exports = router;
