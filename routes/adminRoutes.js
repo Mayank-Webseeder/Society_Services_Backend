@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const { loginAdmin } = require("../controllers/admin/adminAuth");
-const { getJobStats } = require("../controllers/admin/jobStatsController");
+const { getJobStats, getAllJobs } = require("../controllers/admin/jobStatsController");
 
 const {
   getAllSubscriptions,
@@ -289,4 +289,5 @@ router.post("/add-service", authenticate, authorizeRoles("admin"), addServices);
 router.delete("/delete-service", authenticate, authorizeRoles("admin"), deleteServices);
 router.get("/services", getAllServices);
 router.get("/all-vendors-profiles", authenticate, authorizeRoles("admin"), getAllVendorsProfile);
+router.get("/all-jobs", authenticate, authorizeRoles("admin"), getAllJobs);
 module.exports = router;

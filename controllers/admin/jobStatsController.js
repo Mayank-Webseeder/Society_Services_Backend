@@ -56,4 +56,13 @@ exports.getJobStats = async (req, res) => {
 };
 const Services = require("../../models/Services");
 
+exports.getAllJobs = async (req, res) => {
+  try {
+    const jobs = await Job.find().sort({ createdAt: 1 }); // ascending order
+    res.json(jobs);
+  } catch (err) {
+    res.status(500).json({ msg: "Failed to fetch jobs", error: err.message });
+  }
+};
+
 // ➕ Add one or more services
