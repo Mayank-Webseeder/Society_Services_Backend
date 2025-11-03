@@ -10,7 +10,7 @@ const adminRoutes = require("./routes/adminRoutes");
 const vendorRoutes = require("./routes/vendorRoutes");
 const societyRoutes = require("./routes/societyRoutes");
 const swaggerSpec = require("./swaggerOptions");
-
+const { refreshServices } = require("./utils/fetchServices");
 dotenv.config();
 
 const app = express();
@@ -46,13 +46,21 @@ app.use("/uploads/profilePictures", express.static(path.join(__dirname, "middlew
 // ✅ Swagger API docs
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/uploads/idProof", (req, res, next) => {
-  // Force browser to open instead of downloading
-  res.setHeader("Content-Disposition", "inline");
-  next();
+	// Force browser to open instead of downloading
+	res.setHeader("Content-Disposition", "inline");
+	next();
 });
 app.use(
 	"/uploads/quotations",
 	express.static(path.join(__dirname, "middleware/uploads/quotations"), {
+		setHeaders: (res) => {
+			res.setHeader("Content-Disposition", "inline");
+		},
+	})
+);
+app.use(
+	"/uploads/helpImages",
+	express.static(path.join(__dirname, "middleware/uploads/helpImages"), {
 		setHeaders: (res) => {
 			res.setHeader("Content-Disposition", "inline");
 		},
@@ -76,6 +84,7 @@ mongoose.connect(process.env.MONGO_URI)
 	.then(() => {
 		console.log("✅ MongoDB connected");
 		app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
+		refreshServices(); // Load services on startup
 	})
 	.catch((err) => {
 		console.error("❌ MongoDB connection error:", err);

@@ -11,6 +11,7 @@ const {
 } = require("../controllers/jobController");
 
 const { authMiddleware } = require("../middleware/authMiddleware");
+const { authorizeRoles } = require("../middleware/roleBasedAuth");
 
 /**
  * @swagger
@@ -48,7 +49,7 @@ const { authMiddleware } = require("../middleware/authMiddleware");
  *       400:
  *         description: Bad request
  */
-router.post("/create", authMiddleware, createJob);
+router.post("/create", authMiddleware, authorizeRoles("society"),createJob);
 
 /**
  * @swagger
@@ -62,7 +63,7 @@ router.post("/create", authMiddleware, createJob);
  *       200:
  *         description: List of nearby jobs
  */
-router.get("/nearby", authMiddleware, getNearbyJobs);
+router.get("/nearby", authMiddleware, authorizeRoles("vendor"),getNearbyJobs);
 
 /**
  * @swagger
@@ -87,19 +88,6 @@ router.get("/nearby", authMiddleware, getNearbyJobs);
  */
 router.get("/:id", authMiddleware, getJobById);
 
-/**
- * @swagger
- * /jobs/my/posted:
- *   get:
- *     summary: Get all jobs posted by the authenticated society
- *     tags: [Jobs]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of jobs
- */
-router.get("/my/posted", authMiddleware, getMyPostedJobs);
 
 /**
  * @swagger

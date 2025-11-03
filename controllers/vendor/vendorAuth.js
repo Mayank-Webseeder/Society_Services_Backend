@@ -55,7 +55,7 @@ exports.signupVendor = async (req, res) => {
 
 		res.status(201).json({
 			authToken: token,
-			msg: "Vendor registered successfully. Awaiting admin approval.",
+			msg: "Vendor registered successfully.",
 		});
 	} catch (err) {
 		res.status(500).json({ msg: "Server error", error: err.message });
@@ -218,7 +218,6 @@ exports.createVendorProfile = async (req, res) => {
 		if (req.body.contactNumber) updateData.contactNumber = req.body.contactNumber;
 		if (req.body.location) updateData.location = req.body.location;
 		if (req.body.address) updateData.address = req.body.address;
-		if (req.body.gender) updateData.gender = req.body.gender;
 		// if (req.body.paymentMethods) updateData.paymentMethods = req.body.paymentMethods;
 		// if (req.body.lastPayments) updateData.lastPayments = req.body.lastPayments;
 		if (req.body.services) {
@@ -229,23 +228,7 @@ exports.createVendorProfile = async (req, res) => {
 		// Working days
 		// console.log("Incoming workingDays:", req.body.workingDays, typeof req.body.workingDays);
 
-		if (req.body.workingDays) {
-			const validDays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-			const workingDaysObj = {};
-
-			if (Array.isArray(req.body.workingDays)) {
-				// Payload: ["monday", "saturday"]
-				validDays.forEach((day) => {
-					workingDaysObj[day] = req.body.workingDays.includes(day);
-				});
-			} else if (typeof req.body.workingDays === "object") {
-				// Payload: { monday: true, saturday: true }
-				validDays.forEach((day) => {
-					workingDaysObj[day] = !!req.body.workingDays[day];
-				});
-			}
-			updateData.workingDays = workingDaysObj; // ✅ overwrite with final object
-		}
+		
 
 		// idProof
 		if (req.idProofFile) {

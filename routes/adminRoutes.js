@@ -19,13 +19,21 @@ const {
   blacklistVendor,
   getBlacklistedVendors,
   getAllVendors,
+  getAllServices,
+  getAllVendorsProfile,
 } = require("../controllers/admin/vendorController");
 
 const {
   approveSociety,
   getPendingSocieties,
   getApprovedSocieties,
+  getSocietyDetailsById,
+  getAllJobsBySocietyId,
+  getAllSocietiesWithJobStats,
 } = require("../controllers/admin/societyController");
+const { getAllSupportRequests, updateSupportStatus } = require("../controllers/admin/SupportStatusController");
+const { addServices, deleteServices } = require("../controllers/admin/ServicesHandle");
+// const { getSocietyDetails } = require("../controllers/jobController");
 
 /**
  * @swagger
@@ -272,5 +280,13 @@ router.get("/approved-societies", authenticate, authorizeRoles("admin"), getAppr
  *         description: Job statistics retrieved
  */
 router.get("/jobs/stats", authenticate, authorizeRoles("admin"), getJobStats);
-
+router.get("/support-requests", authenticate, authorizeRoles("admin"), getAllSupportRequests);
+router.patch("/support-requests/:id/status", authenticate, authorizeRoles("admin"), updateSupportStatus);
+router.get("/society-directory", authenticate, authorizeRoles("admin"), getAllSocietiesWithJobStats);
+router.get("/society-directory/:societyId", authenticate, authorizeRoles("admin"), getSocietyDetailsById);
+router.get("/society-directory/:societyId/all-jobs", authenticate, authorizeRoles("admin"), getAllJobsBySocietyId);
+router.post("/add-service", authenticate, authorizeRoles("admin"), addServices);
+router.delete("/delete-service", authenticate, authorizeRoles("admin"), deleteServices);
+router.get("/services", getAllServices);
+router.get("/all-vendors-profiles", authenticate, authorizeRoles("admin"), getAllVendorsProfile);
 module.exports = router;

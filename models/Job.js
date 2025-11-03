@@ -67,11 +67,24 @@ const jobSchema = new mongoose.Schema({
 	},
 	status: {
 		type: String,
-		enum: ["New", "Ongoing", "Completed", "Expired"],
+		enum: ["New", "Completed", "Expired"],
 		default: "New",
+	},
+	// 🆕 Field to store when job is completed
+	completedAt: {
+		type: Date,
+		default: null,
 	},
 });
 
 jobSchema.index({ geo: "2dsphere" });
+
+// 🪝 Pre-save hook to set completedAt time
+jobSchema.pre("save", function (next) {
+	if (this.isModified("status") && this.status === "Completed") {
+		this.completedAt = new Date();
+	}
+	next();
+});
 
 module.exports = mongoose.model("Job", jobSchema);

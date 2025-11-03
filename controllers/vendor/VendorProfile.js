@@ -1,16 +1,27 @@
 const Vendor = require("../../models/vendorSchema");
 const Application = require("../../models/Application");
 const Job = require("../../models/Job");
-const Feedback = require("../../models/FeedbackSchema");
-
+const Feedback = require("../../models/FeedbackSchema.js");
+const SupportRequest = require("../../models/SupportSchema.js");
 exports.getMyApplications = async (req, res) => {
 	try {
-		const applications = await Application.find({ vendor: req.user.id }).populate("job");
+		const applications = await Application.find({ vendor: req.user.id })
+			.populate({
+				path: "job",
+				populate: {
+					path: "society",
+					select: "username email buildingName address residentsCount location"
+				}
+			})
+			.lean();
+
 		res.json(applications);
 	} catch (err) {
+		console.error("Error in getMyApplications:", err);
 		res.status(500).json({ msg: "Server error", error: err.message });
 	}
 };
+
 exports.getVendorDashboard = async (req, res) => {
 	try {
 		const totalApplications = await Application.countDocuments({ vendor: req.user.id });
@@ -58,42 +69,17 @@ exports.updateVendorProfile = async (req, res) => {
 			"experience",
 			"services",
 			"address",
-			"workingDays",
-			"workingHours",
 			"location",
 			"paymentMethods",
 			"idProof",
-			"gender",
+			"email"
 		];
 
 		const updates = {};
-		const validDays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-
+		
 		for (const key of allowedFields) {
 			if (req.body[key] !== undefined) {
-				// ✅ Convert workingDays array to object
-				if (key === "workingDays") {
-					const wd = req.body.workingDays;
-					let workingDaysObj = {};
-
-					if (Array.isArray(wd)) {
-						validDays.forEach((day) => {
-							workingDaysObj[day] = wd.includes(day);
-						});
-					} else if (typeof wd === "object") {
-						validDays.forEach((day) => {
-							workingDaysObj[day] = !!wd[day];
-						});
-					} else {
-						validDays.forEach((day) => {
-							workingDaysObj[day] = false;
-						});
-					}
-
-					updates.workingDays = workingDaysObj;
-				} else {
 					updates[key] = req.body[key];
-				}
 			}
 		}
 
@@ -143,4 +129,30 @@ exports.getFeedbacks = async (req, res) => {
 		console.error("Error fetching vendor feedbacks:", err);
 		res.status(500).json({ msg: "Failed to fetch feedbacks", error: err.message });
 	}
+};
+exports.createSupportRequest = async (req, res) => {
+  try {
+	  const { message } = req.body;
+	  const vendor = req.user.id;
+    const imageUrl = req.body.imageUrl || null; // set by uploadHelpImage middleware
+
+    if (!message) {
+      return res.status(400).json({ success: false, message: "Message is required" });
+    }
+
+    const supportRequest = await SupportRequest.create({
+      vendor,
+      message,
+      imageUrl,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Support request submitted successfully",
+      supportRequest,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server error", error: err.message });
+  }
 };

@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
-const predefinedRoles = require("../constants/vendorRoles"); // 🔥 NEW
-
+const {getServices} = require("../utils/fetchServices"); // 🔥 NEW
+const predefinedRoles = getServices(); // 🔥 NEW
 const vendorSchema = new mongoose.Schema(
 	{
 		name: { type: String, required: true },
@@ -41,28 +41,11 @@ const vendorSchema = new mongoose.Schema(
 			default: null,
 		},
 
-		workingDays: {
-			monday: { type: Boolean, default: false },
-			tuesday: { type: Boolean, default: false },
-			wednesday: { type: Boolean, default: false },
-			thursday: { type: Boolean, default: false },
-			friday: { type: Boolean, default: false },
-			saturday: { type: Boolean, default: false },
-			sunday: { type: Boolean, default: false },
-		},
-
-		workingHours: {
-			from: { type: String, default: null },
-			upto: { type: String, default: null },
-		},
+		
 
 		experience: {
 			type: String,
 			default: ">1 years",
-		},
-		gender: {
-			type: String,
-			enum: ["Male", "Female", "Prefer not to say"],
 		},
 		contactNumber: {
 			type: String,
