@@ -45,7 +45,7 @@ exports.blacklistVendor = async (req, res) => {
 // ✅ Get all blacklisted vendors
 exports.getBlacklistedVendors = async (req, res) => {
 	try {
-		const vendors = await Vendor.find({ isBlacklisted: true }).select("name email phone blacklistReason");
+		const vendors = await Vendor.find({ isBlacklisted: true }).select("name email contactNumber businessName profilePicture address services idProof blacklistReason ");
 		res.json(vendors);
 	} catch (err) {
 		res.status(500).json({ msg: "Failed to fetch blacklisted vendors", error: err.message });

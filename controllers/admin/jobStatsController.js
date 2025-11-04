@@ -1,3 +1,4 @@
+const Application = require("../../models/Application");
 const Job = require("../../models/Job");
 
 exports.getJobStats = async (req, res) => {
@@ -73,4 +74,37 @@ exports.getJobbyId = async (req, res) => {
     res.status(500).json({ msg: "Failed to fetch jobs", error: err.message });
   }
 };
+
+exports.deleteJob = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+
+    // 🔎 Check if job exists
+    const job = await Job.findById(jobId);
+    if (!job) {
+      return res.status(404).json({ success: false, msg: "Job not found" });
+    }
+
+    // 🗑️ Delete all applications related to this job
+    const deletedApplications = await Application.deleteMany({ job: jobId });
+
+    // 🗑️ Delete the job itself
+    await Job.findByIdAndDelete(jobId);
+
+    res.status(200).json({
+      success: true,
+      msg: "Job and related applications deleted successfully",
+      deletedJobId: jobId,
+      deletedApplicationsCount: deletedApplications.deletedCount,
+    });
+  } catch (err) {
+    console.error("❌ Error deleting job:", err);
+    res.status(500).json({
+      success: false,
+      msg: "Failed to delete job",
+      error: err.message,
+    });
+  }
+};
+
 // ➕ Add one or more services
