@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const { loginAdmin } = require("../controllers/admin/adminAuth");
-const { getJobStats, getAllJobs, getJobbyId } = require("../controllers/admin/jobStatsController");
+const { getJobStats, getAllJobs, getJobbyId, deleteJob } = require("../controllers/admin/jobStatsController");
 
 const {
   getAllSubscriptions,
@@ -34,6 +34,7 @@ const {
 } = require("../controllers/admin/societyController");
 const { getAllSupportRequests, updateSupportStatus } = require("../controllers/admin/SupportStatusController");
 const { addServices, deleteServices } = require("../controllers/admin/ServicesHandle");
+const { getDashboardStats, getTopVendors } = require("../controllers/admin/dashboard");
 // const { getSocietyDetails } = require("../controllers/jobController");
 
 /**
@@ -293,4 +294,7 @@ router.get("/all-vendors-profiles", authenticate, authorizeRoles("admin"), getAl
 router.get("/vendors-profiles/:id", authenticate, authorizeRoles("admin"), getVendorsProfile);
 router.get("/all-jobs", authenticate, authorizeRoles("admin"), getAllJobs);
 router.get("/job/:id", authenticate, authorizeRoles("admin"), getJobbyId);
+router.delete("/delete-job/:jobId", authenticate, authorizeRoles("admin"), deleteJob);
+router.get("/dashboard-stats", authenticate, authorizeRoles("admin"), getDashboardStats);
+router.get("/top-vendors", authenticate, authorizeRoles("admin"), getTopVendors);
 module.exports = router;

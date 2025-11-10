@@ -131,6 +131,9 @@ exports.approveApplication = async (req, res) => {
 		job.status = "Completed";
 		job.completedAt = new Date();
 		await job.save();
+		await Vendor.findByIdAndUpdate(application.vendor, {
+			$addToSet: { jobHistory: job._id }, // avoids duplicates
+		});
 		await application.populate("job");
 		res.json({ msg: "Application approved. Job is now Complete", application });
 	} catch (err) {
