@@ -243,16 +243,7 @@ exports.expireOldJobs = async (req, res) => {
 		res.status(500).json({ msg: "Failed to expire old jobs", error: err.message });
 	}
 };
-exports.deleteJob = async (req, res) => {
-	try {
-		const { jobId } = req.params;
-		const job = await Job.findByIdAndDelete(jobId);
-		if (!job) return res.status(404).json({ msg: "Job not found" });
-		res.json({ msg: "Job deleted successfully" });
-	} catch (err) {
-		res.status(500).json({ msg: "Server error", error: err.message });
-	}
-};
+
 // const Society = require("../models/Society");
 // const Job = require("../models/Job");
 

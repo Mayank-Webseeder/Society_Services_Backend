@@ -3,7 +3,8 @@ const router = express.Router();
 
 const { signupSociety, loginSociety,giveRating } = require("../controllers/society/societyAuth");
 
-const { getMyPostedJobs, getJobById, deleteJob, getSocietyDetails, getActiveSocientyJobs } = require("../controllers/jobController");
+const { getMyPostedJobs, getJobById, getSocietyDetails, getActiveSocientyJobs } = require("../controllers/jobController");
+const { deleteJob } = require("../controllers/admin/jobStatsController");
 
 const {
 	getJobApplicants,
