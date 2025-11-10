@@ -11,7 +11,7 @@ const options = {
     servers: [
       { url: "http://localhost:3000" }, // matches your running server
       // you can add production server here if needed
-      // { url: "https://api.mysocietyneeds.com" }
+      { url: "https://api.mysocietyneeds.com" }
     ],
     components: {
       securitySchemes: {
@@ -24,7 +24,7 @@ const options = {
     },
     security: [{ bearerAuth: [] }],
   },
-  apis: ["./routes/*.js"], // make sure this path matches your route files
+  apis: ["./routes/*.js"],
 };
 
 const swaggerSpec = swaggerJsdoc(options);
