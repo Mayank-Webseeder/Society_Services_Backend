@@ -79,27 +79,30 @@ exports.verifyRazorpayPayment = async (req, res) => {
     await Subscription.updateMany({ vendor: vendorId }, { isActive: false, subscriptionStatus: "Expired" });
 
     const newSubscription = await Subscription.create({
-      vendor: vendorId,
-      vendorName: vendor.name,
-      planPrice: totalPrice,
-      startDate,
-      endDate,
-      paymentStatus: "Paid",
-      subscriptionStatus: "Active",
-      isActive: true,
-      services: vendor.services.map((s) => ({
-        service: s._id,
-        name: s.name,
-        addedOn: startDate,
-        proratedPrice: s.price,
-      })),
-    });
+  vendor: vendorId,
+  vendorName: vendor.name,
+  vendorReferenceId: vendor.vendorReferenceId,  // ✅ FIXED
+  planPrice: totalPrice,
+  startDate,
+  endDate,
+  paymentStatus: "Paid",
+  subscriptionStatus: "Active",
+  isActive: true,
+  services: vendor.services.map((s) => ({
+    service: s._id,
+    name: s.name,
+    addedOn: startDate,
+    proratedPrice: s.price,
+  })),
+});
+
 
     res.status(201).json({
       msg: "Payment verified — subscription activated",
       subscription: newSubscription,
     });
   } catch (err) {
+
     console.error("❌ verifyRazorpayPayment error:", err);
     res.status(500).json({ msg: "Payment verification failed", error: err.message });
   }
