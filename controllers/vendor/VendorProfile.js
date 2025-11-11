@@ -10,11 +10,11 @@ exports.getMyApplications = async (req, res) => {
 				path: "job",
 				populate: {
 					path: "society",
-					select: "username email buildingName address residentsCount location"
-				}
+					select: "username email buildingName address residentsCount location",
+				},
 			})
 			.lean();
-			console.log(req.user.id," ",applications);
+		// console.log(req.user.id," ",applications);
 		res.json(applications);
 	} catch (err) {
 		console.error("Error in getMyApplications:", err);
@@ -72,14 +72,14 @@ exports.updateVendorProfile = async (req, res) => {
 			"location",
 			"paymentMethods",
 			"idProof",
-			"email"
+			"email",
 		];
 
 		const updates = {};
-		
+
 		for (const key of allowedFields) {
 			if (req.body[key] !== undefined) {
-					updates[key] = req.body[key];
+				updates[key] = req.body[key];
 			}
 		}
 
@@ -131,28 +131,28 @@ exports.getFeedbacks = async (req, res) => {
 	}
 };
 exports.createSupportRequest = async (req, res) => {
-  try {
-	  const { message } = req.body;
-	  const vendor = req.user.id;
-    const imageUrl = req.body.imageUrl || null; // set by uploadHelpImage middleware
+	try {
+		const { message } = req.body;
+		const vendor = req.user.id;
+		const imageUrl = req.body.imageUrl || null; // set by uploadHelpImage middleware
 
-    if (!message) {
-      return res.status(400).json({ success: false, message: "Message is required" });
-    }
+		if (!message) {
+			return res.status(400).json({ success: false, message: "Message is required" });
+		}
 
-    const supportRequest = await SupportRequest.create({
-      vendor,
-      message,
-      imageUrl,
-    });
+		const supportRequest = await SupportRequest.create({
+			vendor,
+			message,
+			imageUrl,
+		});
 
-    res.status(201).json({
-      success: true,
-      message: "Support request submitted successfully",
-      supportRequest,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: "Server error", error: err.message });
-  }
+		res.status(201).json({
+			success: true,
+			message: "Support request submitted successfully",
+			supportRequest,
+		});
+	} catch (err) {
+		console.error(err);
+		res.status(500).json({ success: false, message: "Server error", error: err.message });
+	}
 };

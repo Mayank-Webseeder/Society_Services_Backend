@@ -28,11 +28,8 @@ exports.createRazorpayOrder = async (req, res) => {
         vendorName: vendor.name,
       },
     };
-    
-console.log("Using Razorpay keys:", process.env.RAZORPAY_KEY_ID, process.env.RAZORPAY_KEY_SECRET);
 
     const order = await razorpay.orders.create(options);
-    console.log("Razorpay Order Response:", order);
 
     return res.status(200).json({
       success: true,

@@ -7,7 +7,7 @@ async function refreshServices() {
   try {
     const services = await Services.find({ isActive: true }).select("name -_id");
     cachedServices = services.map((s) => s.name);
-    console.log("✅ Services refreshed:", cachedServices);
+    // console.log("✅ Services refreshed:", cachedServices);
   } catch (err) {
     console.error("❌ Failed to load services:", err.message);
   }
