@@ -83,7 +83,7 @@ exports.loginVendorUsingEmail = async (req, res) => {
 		}
 		const isMatch = await bcrypt.compare(password, vendor.password);
 		if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
-		const token = jwt.sign({ id: vendor._id, role: vendor.role }, process.env.JWT_SECRET);
+		const token = jwt.sign({ id: vendor._id, role: vendor.role }, process.env.JWT_SECRET,{ expiresIn: "7d" });
 
 		res.json({
 			authToken: token,
@@ -100,7 +100,7 @@ exports.loginVendorUsingContact = async (req, res) => {
 	try {
 		const { contactNumber, password } = req.body;
 		const vendor = await Vendor.findOne({ contactNumber });
-
+		console.log(contactNumber,password);
 		if (!vendor) return res.status(400).json({ msg: "Invalid credentials" });
 
 		if (vendor.isBlacklisted) {
@@ -120,8 +120,9 @@ exports.loginVendorUsingContact = async (req, res) => {
 		const isMatch = await bcrypt.compare(password, vendor.password);
 		if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
 
-		const token = jwt.sign({ id: vendor._id, role: vendor.role }, process.env.JWT_SECRET);
-
+		const token = jwt.sign({ id: vendor._id, role: vendor.role }, process.env.JWT_SECRET,
+  { expiresIn: "7d" });
+			console.log(token);
 		res.json({
 			authToken: token,
 			role: vendor.role,
