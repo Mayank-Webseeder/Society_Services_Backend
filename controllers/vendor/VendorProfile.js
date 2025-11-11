@@ -29,17 +29,13 @@ exports.getVendorDashboard = async (req, res) => {
 			vendor: req.user.id,
 			status: "approved",
 		});
-		const ongoingJobs = await Job.countDocuments({
-			"applications.vendor": req.user.id,
-			status: "Ongoing",
-		});
+		
 
 		res.json({
 			msg: "Vendor Dashboard Data",
 			stats: {
 				totalApplications,
 				approvedApplications,
-				ongoingJobs,
 			},
 		});
 	} catch (err) {
@@ -49,14 +45,32 @@ exports.getVendorDashboard = async (req, res) => {
 
 // ✅ Vendor → View Profile
 exports.getVendorProfile = async (req, res) => {
-	try {
-		const vendor = await Vendor.findById(req.user.id).select("-password");
-		if (!vendor) return res.status(404).json({ msg: "Vendor not found" });
-		res.json(vendor);
-	} catch (err) {
-		res.status(500).json({ msg: "Failed to fetch profile", error: err.message });
-	}
+  try {
+    const vendor = await Vendor.findById(req.user.id)
+      .select("-password -__v") // hide sensitive/unnecessary fields
+      .populate({
+        path: "services",
+        select: "name price isActive", // show only relevant fields from Services model
+      })
+      .lean();
+
+    if (!vendor) {
+      return res.status(404).json({ msg: "Vendor not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      vendor,
+    });
+  } catch (err) {
+    console.error("Error fetching vendor profile:", err);
+    res.status(500).json({
+      msg: "Failed to fetch profile",
+      error: err.message,
+    });
+  }
 };
+
 
 // ✅ Vendor → Update Profile
 exports.updateVendorProfile = async (req, res) => {
@@ -67,7 +81,6 @@ exports.updateVendorProfile = async (req, res) => {
 			"profilePicture",
 			"contactNumber",
 			"experience",
-			"services",
 			"address",
 			"location",
 			"paymentMethods",
