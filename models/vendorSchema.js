@@ -1,6 +1,4 @@
 const mongoose = require("mongoose");
-const {getServices} = require("../utils/fetchServices"); // 🔥 NEW
-const predefinedRoles = getServices(); // 🔥 NEW
 const vendorSchema = new mongoose.Schema(
 	{
 		name: { type: String, required: true },

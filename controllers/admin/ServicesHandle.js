@@ -1,5 +1,5 @@
 const Services = require("../../models/Services");
-const { refreshServices } = require("../../utils/fetchServices");
+
 
 exports.addServices = async (req, res) => {
 	try {
@@ -43,7 +43,6 @@ exports.addServices = async (req, res) => {
 
 		// Insert new services
 		const added = await Services.insertMany(newServices);
-		await refreshServices();
 
 		res.status(201).json({
 			msg: "Services added successfully",
@@ -80,7 +79,6 @@ exports.deleteServices = async (req, res) => {
 			$or: [{ name: { $in: nameFilters } }, { _id: { $in: idFilters } }],
 		});
 
-		await refreshServices();
 
 		res.json({
 			msg: "Services deleted successfully",
