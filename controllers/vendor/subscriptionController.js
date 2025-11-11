@@ -28,12 +28,16 @@ exports.createRazorpayOrder = async (req, res) => {
         vendorName: vendor.name,
       },
     };
+    
+console.log("Using Razorpay keys:", process.env.RAZORPAY_KEY_ID, process.env.RAZORPAY_KEY_SECRET);
 
     const order = await razorpay.orders.create(options);
+    console.log("Razorpay Order Response:", order);
 
     return res.status(200).json({
       success: true,
       orderId: order.id,
+      vendorId:vendorId,
       amount: order.amount,
       currency: order.currency,
       key: process.env.RAZORPAY_KEY_ID, // send to frontend
@@ -156,27 +160,45 @@ exports.createAddServiceOrder = async (req, res) => {
     const now = new Date();
     const end = new Date(subscription.endDate);
     const remainingDays = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
-
     if (remainingDays <= 0) {
       return res.status(400).json({ msg: "Subscription has already expired" });
     }
 
-    // Prevent duplicates
-    const alreadyExists = subscription.services?.some(
-      (s) => s.name.toLowerCase() === newService.toLowerCase()
-    );
-    if (alreadyExists) {
-      return res.status(400).json({ msg: "Service already exists in subscription" });
+    // Normalize input to array
+    const servicesToAdd = Array.isArray(newService) ? newService : [newService];
+
+    // Existing service names (lowercase)
+    const existingServiceNames = subscription.services?.map((s) => s.name.toLowerCase()) || [];
+
+    // Split services into “new” and “already existed”
+    const uniqueNewServices = [];
+    const alreadyExisted = [];
+
+    servicesToAdd.forEach((s) => {
+      if (existingServiceNames.includes(s.toLowerCase())) {
+        alreadyExisted.push(s);
+      } else {
+        uniqueNewServices.push(s);
+      }
+    });
+
+    if (uniqueNewServices.length === 0) {
+      return res
+        .status(400)
+        .json({ msg: "All provided services already exist in subscription", alreadyExisted });
     }
 
+    // Calculate prorated price
     const proratedPrice = Math.round((remainingDays / 365) * basePrice);
-    const amount = proratedPrice * 100; // Razorpay takes amount in paise
+    const totalPrice = proratedPrice * uniqueNewServices.length;
+    const amount = totalPrice * 100;
 
+    // Razorpay order creation
     const options = {
       amount,
       currency: "INR",
       receipt: `addService_${Date.now()}`,
-      notes: { vendorId, newService },
+      notes: { vendorId, newServices: uniqueNewServices },
     };
 
     const order = await razorpay.orders.create(options);
@@ -187,23 +209,34 @@ exports.createAddServiceOrder = async (req, res) => {
       amount: order.amount,
       currency: order.currency,
       key: process.env.RAZORPAY_KEY_ID,
-      newService,
-      proratedPrice,
+      newServices: uniqueNewServices,
+      alreadyExisted,        // 🔹 Report services that were skipped
+      perServicePrice: proratedPrice,
+      totalServices: uniqueNewServices.length,
       remainingDays,
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ msg: "Failed to create Razorpay order", error: err.message });
+    res
+      .status(500)
+      .json({ msg: "Failed to create Razorpay order", error: err.message });
   }
 };
+
+
+
 
 
 // ✅ Step 2: Verify Razorpay Payment and add the new service
 exports.verifyAddServicePayment = async (req, res) => {
   try {
     const vendorId = req.user.id;
-    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, newService } = req.body;
+    let { razorpay_payment_id, razorpay_order_id, razorpay_signature, newService } = req.body;
 
+    // Normalize input to array
+    const servicesToAdd = Array.isArray(newService) ? newService : [newService];
+
+    // Verify Razorpay signature
     const body = `${razorpay_order_id}|${razorpay_payment_id}`;
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
@@ -214,6 +247,7 @@ exports.verifyAddServicePayment = async (req, res) => {
       return res.status(400).json({ msg: "Invalid payment signature" });
     }
 
+    // Fetch vendor and subscription
     const vendor = await Vendor.findById(vendorId);
     const subscription = await Subscription.findOne({ vendor: vendorId, isActive: true });
     if (!subscription) return res.status(400).json({ msg: "Active subscription not found" });
@@ -224,31 +258,54 @@ exports.verifyAddServicePayment = async (req, res) => {
     const remainingDays = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
     const proratedPrice = Math.round((remainingDays / 365) * basePrice);
 
-    // Add service to subscription
-    subscription.services.push({
-      name: newService,
-      addedOn: now,
-      proratedPrice,
-    });
-    subscription.planPrice += proratedPrice;
-    await subscription.save();
+    // Existing services in subscription (lowercase)
+    const existingServiceNames = subscription.services?.map((s) => s.name.toLowerCase()) || [];
+    const vendorServiceNames = vendor.services?.map((s) => s.toLowerCase()) || [];
 
-    // Add to vendor profile too
-    if (!vendor.services.includes(newService)) {
-      vendor.services.push(newService);
-      await vendor.save();
-    }
+    // Split services into "added" and "already existed"
+    const addedServices = [];
+    const alreadyExisted = [];
+
+    servicesToAdd.forEach((service) => {
+      if (existingServiceNames.includes(service.toLowerCase()) || vendorServiceNames.includes(service.toLowerCase())) {
+        alreadyExisted.push(service);
+      } else {
+        addedServices.push(service);
+
+        // Add to subscription
+        subscription.services.push({
+          name: service,
+          addedOn: now,
+          proratedPrice,
+        });
+
+        // Add to vendor
+        vendor.services.push(service);
+      }
+    });
+
+    // Update plan price
+    subscription.planPrice += proratedPrice * addedServices.length;
+
+    // Save both
+    await subscription.save();
+    await vendor.save();
 
     res.status(200).json({
-      msg: "Payment verified — service added successfully!",
-      newService,
+      msg: "Payment verified — services processed successfully!",
+      addedServices,       // 🔹 Successfully added
+      alreadyExisted,      // 🔹 Already existed, not added
       remainingDays,
-      proratedPrice,
+      perServicePrice: proratedPrice,
       updatedTotal: subscription.planPrice,
       subscription,
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ msg: "Failed to verify payment or add service", error: err.message });
+    res.status(500).json({
+      msg: "Failed to verify payment or add service",
+      error: err.message,
+    });
   }
 };
+

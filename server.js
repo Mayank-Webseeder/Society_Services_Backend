@@ -78,7 +78,7 @@ app.use("/api/vendor", vendorRoutes);
 app.use("/api/society", societyRoutes);
 app.use("/api/jobs", jobRoutes); // e.g. POST /api/jobs/create, GET /api/jobs/nearby
 app.use("/api/applications", applicationRoutes); // e.g. POST /api/applications/:id/apply
-
+console.log("razor credentical ",process.env.RAZORPAY_KEY_ID," ",process.env.RAZORPAY_KEY_SECRET);
 // ✅ MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
 	.then(() => {
