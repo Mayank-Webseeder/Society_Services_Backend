@@ -1,51 +1,52 @@
 const Society = require("../../models/SocietySchema");
 const Vendor = require("../../models/vendorSchema");
 const Job = require("../../models/Job");
+const mongoose = require("mongoose");
 
 exports.getDashboardStats = async (req, res) => {
-  try {
-    // 🏢 Total societies
-    const totalSocieties = await Society.countDocuments();
+	try {
+		// 🏢 Total societies
+		const totalSocieties = await Society.countDocuments();
 
-    // ⏳ Approval pending societies
-    const pendingSocieties = await Society.countDocuments({ isApproved: false });
+		// ⏳ Approval pending societies
+		const pendingSocieties = await Society.countDocuments({ isApproved: false });
 
-    // 👷 Total vendors
-    const totalVendors = await Vendor.countDocuments();
+		// 👷 Total vendors
+		const totalVendors = await Vendor.countDocuments({ _id: { $ne: process.env.DUMMY_VENDOR} });
 
-    // 💳 Active subscriptions (vendors with active subscriptions)
-    const activeSubscriptions = await Vendor.countDocuments({ "subscription.isActive": true });
-    const [newJobs, completedJobs, expiredJobs] = await Promise.all([
-      Job.countDocuments({ status: "New" }),
-      Job.countDocuments({ status: "Completed" }),
-      Job.countDocuments({ status: "Expired" }),
-    ]);
-    res.status(200).json({
-      success: true,
-        stats: {
-            societies: {
-                total: totalSocieties,
-                pendingApproval: pendingSocieties,
-            },
-            vendors: {
-                total: totalVendors,
-                activeSubscriptions,
-            },
-            jobs: {
-                new: newJobs,
-                completed: completedJobs,
-                expired: expiredJobs,
-            },
-        },
-    });
-  } catch (err) {
-    console.error("❌ Error fetching admin stats:", err);
-    res.status(500).json({
-      success: false,
-      msg: "Failed to fetch admin statistics",
-      error: err.message,
-    });
-  }
+		// 💳 Active subscriptions (vendors with active subscriptions)
+		const activeSubscriptions = await Vendor.countDocuments({ "subscription.isActive": true });
+		const [newJobs, completedJobs, expiredJobs] = await Promise.all([
+			Job.countDocuments({ status: "New" }),
+			Job.countDocuments({ status: "Completed" }),
+			Job.countDocuments({ status: "Expired" }),
+		]);
+		res.status(200).json({
+			success: true,
+			stats: {
+				societies: {
+					total: totalSocieties,
+					pendingApproval: pendingSocieties,
+				},
+				vendors: {
+					total: totalVendors,
+					activeSubscriptions,
+				},
+				jobs: {
+					new: newJobs,
+					completed: completedJobs,
+					expired: expiredJobs,
+				},
+			},
+		});
+	} catch (err) {
+		console.error("❌ Error fetching admin stats:", err);
+		res.status(500).json({
+			success: false,
+			msg: "Failed to fetch admin statistics",
+			error: err.message,
+		});
+	}
 };
 exports.getTopVendors = async (req, res) => {
 	try {
@@ -53,6 +54,9 @@ exports.getTopVendors = async (req, res) => {
 			// 1️⃣ Only include approved and non-blacklisted vendors
 			{
 				$match: {
+					_id: { $ne: new mongoose.Types.ObjectId(process.env.DUMMY_VENDOR
+						
+					) },
 					isApproved: true,
 					isBlacklisted: false,
 				},

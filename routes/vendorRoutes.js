@@ -34,6 +34,7 @@ const {
 	getFeedbacks,
 	getRating,
 	createSupportRequest,
+	deleteVendorAccount,
 } = require("../controllers/vendor/VendorProfile");
 
 const { getAllServices } = require("../controllers/admin/vendorController");
@@ -454,5 +455,20 @@ router.post("/add-service-verify", authenticate, authorizeRoles("vendor"), verif
  *         description: Subscription status returned
  */
 router.get("/subscription-status", authenticate, authorizeRoles("vendor"), checkSubscriptionStatus);
+
+/**
+ * @swagger
+ * /vendor/delete-account:
+ *   delete:
+ *     summary: Delete vendor account (if no active subscription)
+ *     tags: [Vendor]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Account deleted successfully
+ */
+router.delete("/delete-account", authenticate, authorizeRoles("vendor"), deleteVendorAccount);
+
 
 module.exports = router;

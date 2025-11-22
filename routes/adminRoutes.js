@@ -22,6 +22,7 @@ const {
   getAllServices,
   getAllVendorsProfile,
   getVendorsProfile,
+  adminDeleteVendor,
 } = require("../controllers/admin/vendorController");
 
 const {
@@ -669,7 +670,39 @@ router.put(
   authorizeRoles("admin"),
   updateServicePrices
 );
-
-module.exports = router;
+/**
+ * @swagger
+ * /admin/delete-vendor/{vendorId}:
+ *   delete:
+ *     summary: Delete a vendor (Admin Only)
+ *     description: 
+ *       Deletes a vendor permanently if and only if the vendor has **no active subscription**.  
+ *       All references in Application, Subscription, Notification, and SupportRequest will be replaced with the DUMMY vendor.
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: vendorId
+ *         required: true
+ *         description: ID of the vendor to delete
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Vendor deleted and references updated to dummy vendor
+ *       400:
+ *         description: Vendor has an active subscription and cannot be deleted
+ *       404:
+ *         description: Vendor not found
+ *       500:
+ *         description: Server error
+ */
+router.delete(
+  "/delete-vendor/:vendorId",
+  authenticate,
+  authorizeRoles("admin"),
+  adminDeleteVendor
+);
 
 module.exports = router;
