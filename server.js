@@ -17,12 +17,13 @@ const PORT = process.env.PORT || 5003;
 
 // ✅ CORS Configuration
 const allowedOrigins = [
-	"http://localhost:5173",
-	"http://localhost:5174",
-	"https://social-services-app.vercel.app",
-	"https://delightful-pastelito-988e6f.netlify.app",
-	"https://admin.mysocietyneeds.com",
-	"https://admin-society.webseeder.tech",
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "https://social-services-app.vercel.app",
+        "https://delightful-pastelito-988e6f.netlify.app",
+        "https://admin.mysocietyneeds.com",
+        "https://admin-society.webseeder.tech",
+        "https://vendor.mysocietyneeds.com"
 ];
 
 app.use(
