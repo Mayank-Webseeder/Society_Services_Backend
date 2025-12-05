@@ -150,3 +150,11 @@ exports.updateServicePrices = async (req, res) => {
     });
   }
 };
+
+// 🔍 Preview subscription / add-on prices BEFORE payment
+// Body:
+// {
+//   "type": "new" | "add",
+//   "services": ["Plumber", "Electrician"]
+// }
+

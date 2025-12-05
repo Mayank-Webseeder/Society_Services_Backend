@@ -315,3 +315,166 @@ exports.verifyAddServicePayment = async (req, res) => {
 		});
 	}
 };
+exports.previewSubscriptionPricing = async (req, res) => {
+	try {
+		const vendorId = req.user.id;
+		const { type, services } = req.body; // type = "new" or "add"
+
+		if (!type || !["new", "add"].includes(type)) {
+			return res.status(400).json({
+				success: false,
+				msg: "Invalid type. Use 'new' or 'add'.",
+			});
+		}
+
+		if (!services || !Array.isArray(services) || services.length === 0) {
+			return res.status(400).json({
+				success: false,
+				msg: "Please provide an array of service names.",
+			});
+		}
+
+		// 🧹 Normalize names
+		const cleanNames = services
+			.map((n) => (typeof n === "string" ? n.trim() : ""))
+			.filter(Boolean);
+
+		// 🧾 Find matching services (by name, case-insensitive)
+		const serviceDocs = await Services.find({
+			name: {
+				$in: cleanNames.map((n) => new RegExp(`^${n}$`, "i")),
+			},
+			isActive: true,
+		});
+
+		if (!serviceDocs.length) {
+			return res.status(404).json({
+				success: false,
+				msg: "No matching active services found for the given names.",
+				requested: cleanNames,
+			});
+		}
+
+		// Check for any invalid names
+		const foundNamesLower = serviceDocs.map((s) => s.name.toLowerCase());
+		const invalidNames = cleanNames.filter(
+			(n) => !foundNamesLower.includes(n.toLowerCase())
+		);
+
+		if (invalidNames.length > 0) {
+			return res.status(400).json({
+				success: false,
+				msg: "Some services were not found or inactive.",
+				invalidServices: invalidNames,
+			});
+		}
+
+		// 🧮 CASE 1: NEW SUBSCRIPTION
+		if (type === "new") {
+			const now = new Date();
+			const validTill = new Date(now);
+			validTill.setFullYear(validTill.getFullYear() + 1);
+
+			const perService = serviceDocs.map((s) => ({
+				id: s._id,
+				name: s.name,
+				basePrice: s.price || 0,
+			}));
+
+			const totalPrice = perService.reduce((sum, s) => sum + s.basePrice, 0);
+
+			return res.status(200).json({
+				success: true,
+				mode: "new",
+				perService,
+				totalPrice,
+				currency: "INR",
+				validFrom: now,
+				validTill,
+				durationDays: 365,
+			});
+		}
+
+		// 🧮 CASE 2: ADD TO EXISTING SUBSCRIPTION
+		if (type === "add") {
+			// Fetch vendor + active subscription
+			const [vendor, subscription] = await Promise.all([
+				Vendor.findById(vendorId).select("services"),
+				Subscription.findOne({
+					vendor: vendorId,
+					isActive: true,
+					subscriptionStatus: "Active",
+					endDate: { $gt: new Date() },
+				}),
+			]);
+
+			if (!subscription) {
+				return res.status(400).json({
+					success: false,
+					msg: "No active subscription found. Use type 'new' instead.",
+				});
+			}
+
+			const now = new Date();
+			const remainingDays = Math.ceil(
+				(new Date(subscription.endDate) - now) / (1000 * 60 * 60 * 24)
+			);
+
+			if (remainingDays <= 0) {
+				return res.status(400).json({
+					success: false,
+					msg: "Subscription has already expired.",
+				});
+			}
+
+			// Remove services that vendor already has
+			const existingServiceIds = (vendor.services || []).map((s) => s.toString());
+			const uniqueServices = serviceDocs.filter(
+				(s) => !existingServiceIds.includes(s._id.toString())
+			);
+
+			if (!uniqueServices.length) {
+				return res.status(400).json({
+					success: false,
+					msg: "All provided services already exist in vendor's account.",
+				});
+			}
+
+			// Same prorated formula as your add-service order
+			const perService = uniqueServices.map((s) => {
+				const proratedPrice = Math.max(
+					Math.round((remainingDays / 365) * (s.price || 0)),
+					1
+				);
+				return {
+					id: s._id,
+					name: s.name,
+					basePrice: s.price || 0,
+					proratedPrice,
+				};
+			});
+
+			const totalPrice = perService.reduce(
+				(sum, s) => sum + s.proratedPrice,
+				0
+			);
+
+			return res.status(200).json({
+				success: true,
+				mode: "add",
+				perService,
+				totalPrice,
+				currency: "INR",
+				remainingDays,
+				subscriptionEndsOn: subscription.endDate,
+			});
+		}
+	} catch (err) {
+		console.error("❌ previewSubscriptionPricing error:", err);
+		res.status(500).json({
+			success: false,
+			msg: "Failed to preview subscription pricing",
+			error: err.message,
+		});
+	}
+};

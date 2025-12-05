@@ -17,6 +17,7 @@ const {
 	verifyRazorpayPayment,
 	createAddServiceOrder,
 	verifyAddServicePayment,
+	previewSubscriptionPricing
 } = require("../controllers/vendor/subscriptionController");
 
 const { validateOTP, validateForgotPasswordOTP } = require("../middleware/thirdPartyServicesMiddleware");
@@ -469,6 +470,42 @@ router.get("/subscription-status", authenticate, authorizeRoles("vendor"), check
  *         description: Account deleted successfully
  */
 router.delete("/delete-account", authenticate, authorizeRoles("vendor"), deleteVendorAccount);
+/**
+ * @swagger
+ * /vendor/subscription/price-preview:
+ *   post:
+ *     summary: Preview pricing for subscription or add-on services
+ *     tags: [Vendor Subscription]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               type:
+ *                 type: string
+ *                 enum: [new, add]
+ *                 example: "new"
+ *               services:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["Plumber", "Electrician"]
+ *     responses:
+ *       200:
+ *         description: Price preview generated successfully
+ *       400:
+ *         description: Invalid input or no active subscription for add mode
+ */
+router.post(
+	"/subscription/price-preview",
+	authenticate,
+	authorizeRoles("vendor"),
+	previewSubscriptionPricing
+);
 
 
 module.exports = router;
