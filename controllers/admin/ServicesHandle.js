@@ -1,65 +1,87 @@
 const Services = require("../../models/Services");
 
-
 exports.addServices = async (req, res) => {
-	try {
-		const { services } = req.body;
-		/**
-		 * Expected body format:
-		 * {
-		 *   "services": [
-		 *     { "name": "Electrician", "price": 1200, "description": "All electrical work" },
-		 *     { "name": "Plumber", "price": 999 }
-		 *   ]
-		 * }
-		 */
+  try {
+    const { names } = req.body; 
 
-		if (!services || !Array.isArray(services) || services.length === 0) {
-			return res.status(400).json({ msg: "Please provide an array of services" });
-		}
+    if (!names || !Array.isArray(names) || names.length === 0) {
+      return res.status(400).json({ msg: "Please provide an array of services in body.names" });
+    }
 
-		// Clean input: trim names & remove duplicates by name
-		const cleaned = services
-			.map((s) => ({
-				name: s.name?.trim(),
-				price: s.price || 999,
-				description: s.description?.trim() || "",
-			}))
-			.filter((s) => s.name);
+    // Normalize input: allow either strings or objects
+    const normalized = names
+      .map((item) => {
+        if (!item) return null;
+        if (typeof item === "string") {
+          const nm = item.trim();
+          return nm ? { name: nm, price: 999, description: "" } : null;
+        }
+        // object case
+        const nm = (item.name || "").toString().trim();
+        if (!nm) return null;
+        return {
+          name: nm,
+          price: typeof item.price === "number" ? item.price : parseInt(item.price) || 999,
+          description: (item.description || "").toString().trim(),
+        };
+      })
+      .filter(Boolean);
 
-		const uniqueNames = [...new Set(cleaned.map((s) => s.name.toLowerCase()))];
+    if (normalized.length === 0) {
+      return res.status(400).json({ msg: "No valid service names provided" });
+    }
 
-		// Find already existing services
-		const existing = await Services.find({
-			name: { $in: uniqueNames.map((n) => new RegExp(`^${n}$`, "i")) },
-		});
+    // Remove duplicates by case-insensitive name
+    const uniqueByNameMap = new Map();
+    normalized.forEach((s) => {
+      const key = s.name.toLowerCase();
+      if (!uniqueByNameMap.has(key)) uniqueByNameMap.set(key, s);
+    });
+    const uniqueServices = Array.from(uniqueByNameMap.values());
 
-		const existingNames = existing.map((s) => s.name.toLowerCase());
-		const newServices = cleaned.filter((s) => !existingNames.includes(s.name.toLowerCase()));
+    // Build regex list for case-insensitive matching
+    const regexList = uniqueServices.map((s) => new RegExp(`^${s.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"));
 
-		if (newServices.length === 0) {
-			return res.status(400).json({ msg: "All provided services already exist" });
-		}
+    // Find existing services (case-insensitive)
+    const existing = await Services.find({ name: { $in: regexList } }).select("name");
+    const existingNamesLower = existing.map((e) => e.name.toLowerCase());
 
-		// Insert new services
-		const added = await Services.insertMany(newServices);
+    // Filter those that actually need insertion
+    const toInsert = uniqueServices.filter((s) => !existingNamesLower.includes(s.name.toLowerCase()));
 
-		res.status(201).json({
-			msg: "Services added successfully",
-			addedCount: added.length,
-			added,
-		});
-	} catch (err) {
-		console.error("❌ Error adding services:", err);
-		res.status(500).json({
-			msg: "Failed to add services",
-			error: err.message,
-		});
-	}
+
+    if (toInsert.length === 0) {
+      return res.status(400).json({ msg: "All provided services already exist" });
+    }
+
+    // Insert documents (ordered:false to continue on duplicates)
+    const added = await Services.insertMany(
+      toInsert.map((s) => ({ name: s.name, price: s.price, description: s.description })),
+      { ordered: false }
+    );
+
+    res.status(201).json({
+      msg: "Services added successfully",
+      addedCount: added.length,
+      added,
+    });
+  } catch (err) {
+    console.error("❌ Error adding services:", err);
+    // If duplicate key error occurs despite checks, return partial success info if available
+    if (err.code === 11000) {
+      return res.status(409).json({ msg: "Some services already exist (duplicate key)", error: err.message });
+    }
+    res.status(500).json({
+      msg: "Failed to add services",
+      error: err.message,
+    });
+  }
 };
+
 exports.deleteServices = async (req, res) => {
 	try {
-		const { services } = req.body;
+		const { names } = req.body;
+		const services = names;
 		/**
 		 * Expected body:
 		 * {
@@ -74,11 +96,10 @@ exports.deleteServices = async (req, res) => {
 		// Split input into names and IDs
 		const nameFilters = services.filter((id) => isNaN(id) && id.length > 0);
 		const idFilters = services.filter((id) => /^[a-f\d]{24}$/i.test(id));
-
+		console.log("Deleting services - Names:", nameFilters, "IDs:", idFilters);
 		const result = await Services.deleteMany({
 			$or: [{ name: { $in: nameFilters } }, { _id: { $in: idFilters } }],
 		});
-
 
 		res.json({
 			msg: "Services deleted successfully",
@@ -99,62 +120,52 @@ exports.deleteServices = async (req, res) => {
  * - Automatically validates if service exists
  */
 exports.updateServicePrices = async (req, res) => {
-  try {
-    const { updates } = req.body;
-    /**
-     * Expected payload format:
-     * {
-     *   "updates": [
-     *     { "name": "Plumber", "price": 1200 },
-     *     { "id": "690439b56f3fd9f0c0038c60", "price": 1500 }
-     *   ]
-     * }
-     */
+	try {
+		const { updates } = req.body;
+		/**
+		 * Expected payload format:
+		 * {
+		 *   "updates": [
+		 *     { "name": "Plumber", "price": 1200 },
+		 *     { "id": "690439b56f3fd9f0c0038c60", "price": 1500 }
+		 *   ]
+		 * }
+		 */
 
-    if (!Array.isArray(updates) || updates.length === 0) {
-      return res.status(400).json({ msg: "Please provide at least one update object" });
-    }
+		if (!Array.isArray(updates) || updates.length === 0) {
+			return res.status(400).json({ msg: "Please provide at least one update object" });
+		}
 
-    const results = [];
-    const notFound = [];
-    const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+		const results = [];
+		const notFound = [];
+		const objectIdRegex = /^[0-9a-fA-F]{24}$/;
 
-    for (const item of updates) {
-      const filter = item.id && objectIdRegex.test(item.id)
-        ? { _id: item.id }
-        : { name: new RegExp(`^${item.name.trim()}$`, "i") };
+		for (const item of updates) {
+			const filter =
+				item.id && objectIdRegex.test(item.id)
+					? { _id: item.id }
+					: { name: new RegExp(`^${item.name.trim()}$`, "i") };
 
-      const updated = await Services.findOneAndUpdate(
-        filter,
-        { price: item.price },
-        { new: true }
-      );
+			const updated = await Services.findOneAndUpdate(filter, { price: item.price }, { new: true });
 
-      if (updated) {
-        results.push({ name: updated.name, newPrice: updated.price });
-      } else {
-        notFound.push(item.name || item.id);
-      }
-    }
+			if (updated) {
+				results.push({ name: updated.name, newPrice: updated.price });
+			} else {
+				notFound.push(item.name || item.id);
+			}
+		}
 
-    return res.status(200).json({
-      msg: "Service price update process completed",
-      updated: results,
-      notFound,
-    });
-  } catch (err) {
-    console.error("❌ Error updating service prices:", err);
-    res.status(500).json({
-      msg: "Failed to update service prices",
-      error: err.message,
-    });
-  }
+		return res.status(200).json({
+			msg: "Service price update process completed",
+			updated: results,
+			notFound,
+		});
+	} catch (err) {
+		console.error("❌ Error updating service prices:", err);
+		res.status(500).json({
+			msg: "Failed to update service prices",
+			error: err.message,
+		});
+	}
 };
-
-// 🔍 Preview subscription / add-on prices BEFORE payment
-// Body:
-// {
-//   "type": "new" | "add",
-//   "services": ["Plumber", "Electrician"]
-// }
 

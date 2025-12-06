@@ -117,7 +117,7 @@ exports.getAllVendorsProfile = async (req, res) => {
 	try {
 		const vendors = await Vendor.find({ _id: { $ne: process.env.DUMMY_VENDOR} }).select(
 			"name email contactNumber businessName profilePicture address averageRating totalRatings experience services location idProof role isApproved isBlacklisted blacklistReason"
-		);
+		).populate('services',"name price description");
 		res.json(vendors);
 	} catch (err) {
 		res.status(500).json({ msg: "Failed to fetch vendors", error: err.message });
