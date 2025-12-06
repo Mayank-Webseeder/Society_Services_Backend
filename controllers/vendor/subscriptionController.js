@@ -134,36 +134,66 @@ exports.checkSubscriptionStatus = async (req, res) => {
 		const subscription = await Subscription.findOne({
 			vendor: req.user.id,
 			isActive: true,
-		}).populate("services.service", "name price isActive");
+		});
 
+		// If no subscription found
 		if (!subscription) {
 			return res.status(200).json({
 				isActive: false,
 				subscriptionStatus: "None",
 				message: "No active subscription found",
+				subscription: null,
 			});
 		}
 
 		const now = new Date();
 		const isStillValid = now <= subscription.endDate;
 
+		// If expired → update status
 		if (!isStillValid) {
 			subscription.isActive = false;
 			subscription.subscriptionStatus = "Expired";
 			await subscription.save();
 		}
 
-		res.status(200).json({
+		// Build detailed response
+		const responseData = {
+			// Overall flags
 			isActive: isStillValid,
 			subscriptionStatus: isStillValid ? "Active" : "Expired",
+
+			// Subscription main details
+			subscriptionId: subscription._id,
+			vendor: subscription.vendor,
+			vendorName: subscription.vendorName,
+			vendorReferenceId: subscription.vendorReferenceId,
+
+			planPrice: subscription.planPrice,
+			paymentStatus: subscription.paymentStatus,
+
+			startDate: subscription.startDate,
+			endDate: subscription.endDate,
 			expiresOn: subscription.endDate,
+
+			// Metadata
+			createdAt: subscription.createdAt,
+			updatedAt: subscription.updatedAt,
+
+			// Services user has subscribed
 			services: subscription.services || [],
-		});
+		};
+
+		res.status(200).json(responseData);
+
 	} catch (err) {
 		console.error("❌ checkSubscriptionStatus error:", err);
-		res.status(500).json({ msg: "Failed to check subscription", error: err.message });
+		res.status(500).json({
+			msg: "Failed to check subscription",
+			error: err.message
+		});
 	}
 };
+
 
 // ✅ Create Razorpay order for adding new services
 exports.createAddServiceOrder = async (req, res) => {
