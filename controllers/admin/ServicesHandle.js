@@ -1,27 +1,36 @@
 const Services = require("../../models/Services");
-
 exports.addServices = async (req, res) => {
   try {
-    const { names } = req.body; 
+    // Accept both: { names: [...] } or { services: [...] }
+    const rawInput = req.body?.names || req.body?.services || [];
 
-    if (!names || !Array.isArray(names) || names.length === 0) {
-      return res.status(400).json({ msg: "Please provide an array of services in body.names" });
+    if (!Array.isArray(rawInput) || rawInput.length === 0) {
+      return res.status(400).json({
+        msg: "Please provide an array of services in body.names or body.services",
+      });
     }
 
     // Normalize input: allow either strings or objects
-    const normalized = names
+    const normalized = rawInput
       .map((item) => {
         if (!item) return null;
+
+        // string case → just the name
         if (typeof item === "string") {
           const nm = item.trim();
           return nm ? { name: nm, price: 999, description: "" } : null;
         }
-        // object case
+
+        // object case { name, price?, description? }
         const nm = (item.name || "").toString().trim();
         if (!nm) return null;
+
         return {
           name: nm,
-          price: typeof item.price === "number" ? item.price : parseInt(item.price) || 999,
+          price:
+            typeof item.price === "number"
+              ? item.price
+              : parseInt(item.price) || 999,
           description: (item.description || "").toString().trim(),
         };
       })
@@ -40,23 +49,37 @@ exports.addServices = async (req, res) => {
     const uniqueServices = Array.from(uniqueByNameMap.values());
 
     // Build regex list for case-insensitive matching
-    const regexList = uniqueServices.map((s) => new RegExp(`^${s.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"));
+    const regexList = uniqueServices.map(
+      (s) =>
+        new RegExp(
+          `^${s.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+          "i"
+        )
+    );
 
     // Find existing services (case-insensitive)
-    const existing = await Services.find({ name: { $in: regexList } }).select("name");
+    const existing = await Services.find({ name: { $in: regexList } }).select(
+      "name"
+    );
     const existingNamesLower = existing.map((e) => e.name.toLowerCase());
 
     // Filter those that actually need insertion
-    const toInsert = uniqueServices.filter((s) => !existingNamesLower.includes(s.name.toLowerCase()));
-
+    const toInsert = uniqueServices.filter(
+      (s) => !existingNamesLower.includes(s.name.toLowerCase())
+    );
 
     if (toInsert.length === 0) {
-      return res.status(400).json({ msg: "All provided services already exist" });
+      return res
+        .status(400)
+        .json({ msg: "All provided services already exist" });
     }
 
-    // Insert documents (ordered:false to continue on duplicates)
     const added = await Services.insertMany(
-      toInsert.map((s) => ({ name: s.name, price: s.price, description: s.description })),
+      toInsert.map((s) => ({
+        name: s.name,
+        price: s.price,
+        description: s.description,
+      })),
       { ordered: false }
     );
 
@@ -67,9 +90,11 @@ exports.addServices = async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Error adding services:", err);
-    // If duplicate key error occurs despite checks, return partial success info if available
     if (err.code === 11000) {
-      return res.status(409).json({ msg: "Some services already exist (duplicate key)", error: err.message });
+      return res.status(409).json({
+        msg: "Some services already exist (duplicate key)",
+        error: err.message,
+      });
     }
     res.status(500).json({
       msg: "Failed to add services",
@@ -78,41 +103,62 @@ exports.addServices = async (req, res) => {
   }
 };
 
+
 exports.deleteServices = async (req, res) => {
-	try {
-		const { names } = req.body;
-		const services = names;
-		/**
-		 * Expected body:
-		 * {
-		 *   "services": ["Plumber", "670e19b54c28d2b29d1b5c12"]
-		 * }
-		 */
+  try {
+    // Accept both: { names: [...] } or { services: [...] }
+    const services = req.body?.names || req.body?.services || [];
 
-		if (!Array.isArray(services) || services.length === 0) {
-			return res.status(400).json({ msg: "Please provide service names or IDs to delete" });
-		}
+    /**
+     * Supported bodies:
+     * {
+     *   "names": ["Plumber", "Electrician"]
+     * }
+     * or
+     * {
+     *   "services": ["Plumber", "670e19b54c28d2b29d1b5c12"]
+     * }
+     */
 
-		// Split input into names and IDs
-		const nameFilters = services.filter((id) => isNaN(id) && id.length > 0);
-		const idFilters = services.filter((id) => /^[a-f\d]{24}$/i.test(id));
-		console.log("Deleting services - Names:", nameFilters, "IDs:", idFilters);
-		const result = await Services.deleteMany({
-			$or: [{ name: { $in: nameFilters } }, { _id: { $in: idFilters } }],
-		});
+    if (!Array.isArray(services) || services.length === 0) {
+      return res.status(400).json({
+        msg: "Please provide service names or IDs to delete in body.names or body.services",
+      });
+    }
 
-		res.json({
-			msg: "Services deleted successfully",
-			deletedCount: result.deletedCount,
-		});
-	} catch (err) {
-		console.error("❌ Error deleting services:", err);
-		res.status(500).json({
-			msg: "Failed to delete services",
-			error: err.message,
-		});
-	}
+    // Split input into names and IDs
+    const objectIdRegex = /^[a-f\d]{24}$/i;
+
+    const nameFilters = services.filter(
+      (val) => typeof val === "string" && !objectIdRegex.test(val) && val.length > 0
+    );
+
+    const idFilters = services.filter(
+      (val) => typeof val === "string" && objectIdRegex.test(val)
+    );
+
+    console.log("Deleting services - Names:", nameFilters, "IDs:", idFilters);
+
+    const result = await Services.deleteMany({
+      $or: [
+        { name: { $in: nameFilters } },
+        { _id: { $in: idFilters } },
+      ],
+    });
+
+    res.json({
+      msg: "Services deleted successfully",
+      deletedCount: result.deletedCount,
+    });
+  } catch (err) {
+    console.error("❌ Error deleting services:", err);
+    res.status(500).json({
+      msg: "Failed to delete services",
+      error: err.message,
+    });
+  }
 };
+
 
 /**
  * 🧠 Admin API → Update Service Price
