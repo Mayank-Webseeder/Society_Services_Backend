@@ -4,84 +4,44 @@ const Vendor = require("../models/vendorSchema");
 const Subscription = require("../models/Subscription");
 // 🔹 Vendor applies to job (quotation only)
 exports.applyToJob = async (req, res) => {
-  try {
-    const { message, quotedpdf } = req.body;
-    const jobId = req.params.id;
-    const vendorId = req.user.id;
+	try {
+		const { message, quotedpdf } = req.body;
 
-    // 1️⃣ Find job
-    const job = await Job.findById(jobId).populate("service", "name");
-    if (!job) return res.status(404).json({ msg: "Job not found" });
+		const jobId = req.params.id;
 
-    // 2️⃣ Block if job completed
-    if (job.status === "Completed") {
-      return res.status(400).json({ msg: "Cannot apply. This job is already completed." });
-    }
+		const job = await Job.findById(jobId);
+		if (!job) return res.status(404).json({ msg: "Job not found" });
+		const subscription = await Subscription.findOne({ vendor: req.user.id, isActive: true });
+		if (!subscription) {
+			return res.status(403).json({ msg: "Active subscription required to apply for jobs." });
+		}
+		// ✅ Prevent applying if job is already completed
+		if (job.status === "Completed") {
+			return res.status(400).json({ msg: "Cannot apply. This job is already completed." });
+		}
 
-    // 3️⃣ Prevent duplicate application
-    const existing = await Application.findOne({ job: jobId, vendor: vendorId });
-    if (existing) {
-      return res
-        .status(400)
-        .json({ msg: "Already applied or shown interest for this job" });
-    }
+		const existing = await Application.findOne({ job: jobId, vendor: req.user.id });
+		if (existing) {
+			return res.status(400).json({ msg: "Already applied or shown interest for this job" });
+		}
 
-    // 🔴 4️⃣ Check active subscription
-    const activeSubscription = await Subscription.findOne({
-      vendor: vendorId,
-      isActive: true,
-      subscriptionStatus: "Active",
-      endDate: { $gt: new Date() },
-    }).select("services endDate");
+		const application = new Application({
+			job: jobId,
+			vendor: req.user.id,
+			applicationType: "quotation",
+			message: message || "",
+			quotedpdf,
+			status: "approval pending",
+			isQuotation: true,
+		});
 
-    if (!activeSubscription) {
-      return res.status(403).json({
-        msg: "You need an active subscription to apply for jobs.",
-      });
-    }
+		await application.save();
 
-    // 🔍 5️⃣ Check that subscription includes this job's service
-    // ⚠️ Assumes `job.service` = ObjectId of Services
-    if (!job.service) {
-      return res.status(400).json({
-        msg: "This job does not have a service linked. Please contact support.",
-      });
-    }
-
-    const jobServiceId = job.service._id ? job.service._id.toString() : job.service.toString();
-
-    const hasServiceInSubscription = activeSubscription.services.some(
-      (s) => s.service && s.service.toString() === jobServiceId
-    );
-
-    if (!hasServiceInSubscription) {
-      return res.status(403).json({
-        msg: "You cannot apply for this job because your subscription does not include this service.",
-        serviceRequired: job.service.name || "Selected service",
-        subscriptionValidTill: activeSubscription.endDate,
-      });
-    }
-
-    // ✅ 6️⃣ All good – create application
-    const application = new Application({
-      job: jobId,
-      vendor: vendorId,
-      applicationType: "quotation",
-      message: message || "",
-      quotedpdf,
-      status: "approval pending",
-      isQuotation: true,
-    });
-
-    await application.save();
-
-    res.status(201).json({ msg: "Applied with quotation", application });
-  } catch (err) {
-    console.error("❌ applyToJob error:", err);
-    res.status(500).json({ msg: "Failed to apply", error: err.message });
-  }
+		res.status(201).json({ msg: "Applied with quotation", application });
+	} catch (err) {
+		res.status(500).json({ msg: "Failed to apply", error: err.message });
+	}
 };
-
 
 // 🔹 Vendor shows interest (button click, no quotation)
 exports.showInterestInJob = async (req, res) => {
@@ -163,7 +123,7 @@ exports.approveApplication = async (req, res) => {
 
 		// ✅ Approve current application
 		application.status = "approved";
-		
+
 		await application.save();
 
 		// ✅ Reject all other applications for the same job
