@@ -17,7 +17,8 @@ const {
 	verifyRazorpayPayment,
 	createAddServiceOrder,
 	verifyAddServicePayment,
-	previewSubscriptionPricing
+	previewSubscriptionPricing,
+	getSubscriptionHistory,
 } = require("../controllers/vendor/subscriptionController");
 
 const { validateOTP, validateForgotPasswordOTP } = require("../middleware/thirdPartyServicesMiddleware");
@@ -500,12 +501,91 @@ router.delete("/delete-account", authenticate, authorizeRoles("vendor"), deleteV
  *       400:
  *         description: Invalid input or no active subscription for add mode
  */
-router.post(
-	"/subscription/price-preview",
-	authenticate,
-	authorizeRoles("vendor"),
-	previewSubscriptionPricing
-);
+router.post("/subscription/price-preview", authenticate, authorizeRoles("vendor"), previewSubscriptionPricing);
 
+/**
+ * @swagger
+ * /vendor/subscription-history:
+ *   get:
+ *     summary: Get vendor subscription history
+ *     description: Returns all subscriptions (current and past) for the logged-in vendor, ordered from latest to oldest.
+ *     tags: [Vendor Subscription]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Subscription history fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *                   example: Subscription history fetched successfully
+ *                 count:
+ *                   type: integer
+ *                   example: 3
+ *                 subscriptions:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                         example: "69043a4b6f3fd9f0c0038c99"
+ *                       vendor:
+ *                         type: string
+ *                         example: "68ef88db6458d42079ec6004"
+ *                       planName:
+ *                         type: string
+ *                         example: "Standard Annual"
+ *                       planPrice:
+ *                         type: number
+ *                         example: 2999
+ *                       subscriptionStatus:
+ *                         type: string
+ *                         example: "Active"
+ *                       isActive:
+ *                         type: boolean
+ *                         example: true
+ *                       startDate:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2025-01-01T00:00:00.000Z"
+ *                       endDate:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2025-12-31T23:59:59.000Z"
+ *                       services:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             service:
+ *                               type: object
+ *                               properties:
+ *                                 _id:
+ *                                   type: string
+ *                                   example: "690439b56f3fd9f0c0038c5f"
+ *                                 name:
+ *                                   type: string
+ *                                   example: "Plumber"
+ *                                 price:
+ *                                   type: number
+ *                                   example: 299
+ *                                 isActive:
+ *                                   type: boolean
+ *                                   example: true
+ *                             addedOn:
+ *                               type: string
+ *                               format: date-time
+ *                               example: "2025-01-10T12:34:56.000Z"
+ *       401:
+ *         description: Unauthorized – vendor token missing or invalid
+ *       500:
+ *         description: Server error while fetching subscription history
+ */
+router.get("/subscription-history", authenticate, authorizeRoles("vendor"), getSubscriptionHistory);
 
 module.exports = router;

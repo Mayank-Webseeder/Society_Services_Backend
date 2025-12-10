@@ -508,3 +508,25 @@ exports.previewSubscriptionPricing = async (req, res) => {
 		});
 	}
 };
+
+
+exports.getSubscriptionHistory = async (req, res) => {
+	try {
+		const vendorId = req.user.id;
+
+		const history = await Subscription.find({ vendor: vendorId })
+			.sort({ createdAt: -1 }) // recent first
+			.select("-__v"); // clean output
+
+		return res.status(200).json({
+			msg: "Subscription history fetched successfully",
+			history,
+		});
+	} catch (err) {
+		console.error("❌ getSubscriptionHistory error:", err);
+		return res.status(500).json({
+			msg: "Failed to fetch subscription history",
+			error: err.message,
+		});
+	}
+};

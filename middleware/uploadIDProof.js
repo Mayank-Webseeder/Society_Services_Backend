@@ -15,7 +15,7 @@ const uploadIdProof = (req, res, next) => {
   if (!idProof) {
     return next();
   }
-if (typeof idProof.fileBase64 === "string" && idProof.fileBase64.startsWith("/uploads/idProof/")) {
+if (typeof idProof === "string" && idProof.startsWith("/uploads/idProof/")) {
     req.idProofFile = {
       path: idProof,
       mimeType: null,
