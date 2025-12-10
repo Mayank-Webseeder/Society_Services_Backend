@@ -2,7 +2,6 @@ const Job = require("../models/Job");
 const Application = require("../models/Application");
 const Vendor = require("../models/vendorSchema");
 const Notification = require("../models/Notification");
-const { sendJobNotification } = require("../utils/sendJobNotification");
 const Society = require("../models/SocietySchema");
 
 // 1. Society Creates a Job

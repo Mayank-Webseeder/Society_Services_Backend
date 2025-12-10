@@ -1,20 +1,27 @@
 const express = require("express");
 const router = express.Router();
 
-const { signupSociety, loginSociety,giveRating } = require("../controllers/society/societyAuth");
+const { signupSociety, loginSociety, giveRating } = require("../controllers/society/societyAuth");
 
-const { getMyPostedJobs, getJobById, getSocietyDetails, getActiveSocientyJobs } = require("../controllers/jobController");
+const {
+    getMyPostedJobs,
+    getJobById,
+    getSocietyDetails,
+    getActiveSocientyJobs,
+} = require("../controllers/jobController");
+
 const { deleteJob } = require("../controllers/admin/jobStatsController");
 
 const {
-	getJobApplicants,
-	approveApplication,
-	getVendorApplicationType,
-	rejectApplication,
-	getApplicantCount,
+    getJobApplicants,
+    approveApplication,
+    getVendorApplicationType,
+    rejectApplication,
+    getApplicantCount,
 } = require("../controllers/applicationController");
 
 const { authenticate, authorizeRoles } = require("../middleware/roleBasedAuth");
+
 
 /**
  * @swagger
@@ -27,7 +34,7 @@ const { authenticate, authorizeRoles } = require("../middleware/roleBasedAuth");
  * @swagger
  * /society/signup:
  *   post:
- *     summary: Society signup
+ *     summary: Register a new society
  *     tags: [Society]
  *     requestBody:
  *       required: true
@@ -35,24 +42,35 @@ const { authenticate, authorizeRoles } = require("../middleware/roleBasedAuth");
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - username
+ *               - email
+ *               - password
  *             properties:
- *               name:
+ *               username:
  *                 type: string
  *               email:
  *                 type: string
  *               password:
  *                 type: string
+ *               buildingName:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               residentsCount:
+ *                 type: number
  *     responses:
  *       201:
- *         description: Society created successfully
+ *         description: Society registered successfully
  */
 router.post("/signup", signupSociety);
+
 
 /**
  * @swagger
  * /society/login:
  *   post:
- *     summary: Society login
+ *     summary: Login society
  *     tags: [Society]
  *     requestBody:
  *       required: true
@@ -60,6 +78,9 @@ router.post("/signup", signupSociety);
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - email
+ *               - password
  *             properties:
  *               email:
  *                 type: string
@@ -67,79 +88,84 @@ router.post("/signup", signupSociety);
  *                 type: string
  *     responses:
  *       200:
- *         description: Society logged in successfully
+ *         description: Login successful
  */
 router.post("/login", loginSociety);
+
 
 /**
  * @swagger
  * /society/dashboard:
  *   get:
- *     summary: Society dashboard (protected)
+ *     summary: Society dashboard (requires authentication)
  *     tags: [Society]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Welcome message with user details
+ *         description: Dashboard data
  */
 router.get("/dashboard", authenticate, authorizeRoles("society"), (req, res) => {
-	res.json({ msg: "Welcome to Society Dashboard", user: req.user });
+    res.json({ msg: "Welcome to Society Dashboard", user: req.user });
 });
+
 
 /**
  * @swagger
  * /society/jobs/posted:
  *   get:
- *     summary: View jobs posted by society
+ *     summary: Get jobs posted by the society
  *     tags: [Society]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: List of jobs
+ *         description: List of posted jobs
  */
 router.get("/jobs/posted", authenticate, authorizeRoles("society"), getMyPostedJobs);
+
 
 /**
  * @swagger
  * /society/jobs/{id}:
  *   get:
- *     summary: View one job by ID
+ *     summary: Get single job by ID
  *     tags: [Society]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: id
- *         in: path
- *         required: true
+ *       - in: path
+ *         name: id
  *         schema:
  *           type: string
+ *         required: true
  *     responses:
  *       200:
  *         description: Job details
  */
 router.get("/jobs/:id", authenticate, authorizeRoles("society"), getJobById);
 
+
 /**
  * @swagger
- * /society/jobs/{jobId}/applicants:
+ * /society/jobs/{id}/applicants:
  *   get:
- *     summary: View applicants for a job
+ *     summary: Get all applicants for a job
  *     tags: [Society]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: jobId
- *         in: path
+ *       - in: path
+ *         name: id
  *         required: true
  *         schema:
  *           type: string
  *     responses:
  *       200:
- *         description: List of applicants
+ *         description: Applicants list
  */
 router.get("/jobs/:id/applicants", authenticate, authorizeRoles("society"), getJobApplicants);
+
 
 /**
  * @swagger
@@ -153,13 +179,12 @@ router.get("/jobs/:id/applicants", authenticate, authorizeRoles("society"), getJ
  *       - name: applicationId
  *         in: path
  *         required: true
- *         schema:
- *           type: string
  *     responses:
  *       200:
- *         description: Application approved
+ *         description: Application approved, job marked completed
  */
 router.post("/applications/:applicationId/approve", authenticate, authorizeRoles("society"), approveApplication);
+
 
 /**
  * @swagger
@@ -173,33 +198,12 @@ router.post("/applications/:applicationId/approve", authenticate, authorizeRoles
  *       - name: applicationId
  *         in: path
  *         required: true
- *         schema:
- *           type: string
  *     responses:
  *       200:
  *         description: Application rejected
  */
 router.post("/applications/:applicationId/reject", authenticate, authorizeRoles("society"), rejectApplication);
 
-/**
- * @swagger
- * /society/jobs/{jobId}/complete:
- *   post:
- *     summary: Mark job as completed
- *     tags: [Society]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - name: jobId
- *         in: path
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Job marked completed
- */
-// router.post("/jobs/:jobId/complete", authenticate, authorizeRoles("society"), markJobComplete);
 
 /**
  * @swagger
@@ -213,44 +217,55 @@ router.post("/applications/:applicationId/reject", authenticate, authorizeRoles(
  *       - name: jobId
  *         in: path
  *         required: true
- *         schema:
- *           type: string
  *     responses:
  *       200:
- *         description: Number of applicants
+ *         description: Numbers of applicants
  */
 router.get("/jobs/:jobId/applicant-count", authenticate, authorizeRoles("society"), getApplicantCount);
+
 
 /**
  * @swagger
  * /society/jobs/{jobId}/vendor/{vendorId}:
  *   get:
- *     summary: View if a specific vendor applied or showed interest
+ *     summary: Get vendor application type (quotation / interest)
  *     tags: [Society]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - name: jobId
- *         in: path
- *         required: true
- *         schema:
- *           type: string
  *       - name: vendorId
- *         in: path
- *         required: true
- *         schema:
- *           type: string
  *     responses:
  *       200:
- *         description: Vendor application type/status
+ *         description: Vendor application status
  */
 router.get("/jobs/:jobId/vendor/:vendorId", authenticate, authorizeRoles("society"), getVendorApplicationType);
+
 
 /**
  * @swagger
  * /society/jobs/{jobId}/delete:
  *   delete:
- *     summary: Delete a job
+ *     summary: Delete job posted by society
+ *     tags: [Society]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: jobId
+ *         required: true
+ *         in: path
+ *     responses:
+ *       200:
+ *         description: Job deleted successfully
+ */
+router.delete("/jobs/:jobId/delete", authenticate, authorizeRoles("society"), deleteJob);
+
+
+/**
+ * @swagger
+ * /society/give-feedback/{jobId}:
+ *   post:
+ *     summary: Submit rating & feedback for completed job
  *     tags: [Society]
  *     security:
  *       - bearerAuth: []
@@ -258,16 +273,56 @@ router.get("/jobs/:jobId/vendor/:vendorId", authenticate, authorizeRoles("societ
  *       - name: jobId
  *         in: path
  *         required: true
- *         schema:
- *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - rating
+ *             properties:
+ *               rating:
+ *                 type: number
+ *                 minimum: 1
+ *                 maximum: 5
+ *               feedbackText:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Rating submitted
+ */
+router.post("/give-feedback/:jobId", authenticate, authorizeRoles("society"), giveRating);
+
+
+/**
+ * @swagger
+ * /society/profile:
+ *   get:
+ *     summary: Get society profile details + stats
+ *     tags: [Society]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Job deleted
+ *         description: Society profile fetched
  */
-router.delete("/jobs/:jobId/delete", authenticate, authorizeRoles("society"), deleteJob);
-
-router.post("/give-feedback/:jobId", authenticate, authorizeRoles("society"), giveRating);
 router.get("/profile", authenticate, authorizeRoles("society"), getSocietyDetails);
+
+
+/**
+ * @swagger
+ * /society/active-jobs:
+ *   get:
+ *     summary: Get completed jobs for society
+ *     tags: [Society]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Active completed jobs list
+ */
 router.get("/active-jobs", authenticate, authorizeRoles("society"), getActiveSocientyJobs);
+
 
 module.exports = router;

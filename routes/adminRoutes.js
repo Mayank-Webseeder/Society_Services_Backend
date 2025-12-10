@@ -22,6 +22,7 @@ const {
   getAllServices,
   getAllVendorsProfile,
   getVendorsProfile,
+  adminDeleteVendor,
 } = require("../controllers/admin/vendorController");
 
 const {
@@ -33,7 +34,7 @@ const {
   getAllSocietiesWithJobStats,
 } = require("../controllers/admin/societyController");
 const { getAllSupportRequests, updateSupportStatus } = require("../controllers/admin/SupportStatusController");
-const { addServices, deleteServices } = require("../controllers/admin/ServicesHandle");
+const { addServices, deleteServices, updateServicePrices } = require("../controllers/admin/ServicesHandle");
 const { getDashboardStats, getTopVendors } = require("../controllers/admin/dashboard");
 // const { getSocietyDetails } = require("../controllers/jobController");
 
@@ -590,4 +591,118 @@ router.get("/dashboard-stats", authenticate, authorizeRoles("admin"), getDashboa
  *         description: Top vendors retrieved successfully.
  */
 router.get("/top-vendors", authenticate, authorizeRoles("admin"), getTopVendors);
+/**
+ * @swagger
+ * /admin/services/update-prices:
+ *   put:
+ *     summary: Update service prices (Admin only)
+ *     description: Allows the admin to update the prices of one or multiple services by name or ID.
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               updates:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "690439b56f3fd9f0c0038c60"
+ *                       description: Optional service ID (use either id or name)
+ *                     name:
+ *                       type: string
+ *                       example: "Plumber"
+ *                       description: Optional service name (case-insensitive)
+ *                     price:
+ *                       type: number
+ *                       example: 1200
+ *                       description: New price for the service
+ *                 example:
+ *                   - name: "Plumber"
+ *                     price: 1200
+ *                   - id: "690439b56f3fd9f0c0038c60"
+ *                     price: 999
+ *     responses:
+ *       200:
+ *         description: Prices updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *                   example: Service price update process completed
+ *                 updated:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       name:
+ *                         type: string
+ *                         example: "Plumber"
+ *                       newPrice:
+ *                         type: number
+ *                         example: 1200
+ *                 notFound:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                     example: "Electrician"
+ *       400:
+ *         description: Invalid or missing input
+ *       401:
+ *         description: Unauthorized - Admin token required
+ *       500:
+ *         description: Server error
+ */
+
+router.put(
+  "/services/update-prices",
+  authenticate,
+  authorizeRoles("admin"),
+  updateServicePrices
+);
+/**
+ * @swagger
+ * /admin/delete-vendor/{vendorId}:
+ *   delete:
+ *     summary: Delete a vendor (Admin Only)
+ *     description: 
+ *       Deletes a vendor permanently if and only if the vendor has **no active subscription**.  
+ *       All references in Application, Subscription, Notification, and SupportRequest will be replaced with the DUMMY vendor.
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: vendorId
+ *         required: true
+ *         description: ID of the vendor to delete
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Vendor deleted and references updated to dummy vendor
+ *       400:
+ *         description: Vendor has an active subscription and cannot be deleted
+ *       404:
+ *         description: Vendor not found
+ *       500:
+ *         description: Server error
+ */
+router.delete(
+  "/delete-vendor/:vendorId",
+  authenticate,
+  authorizeRoles("admin"),
+  adminDeleteVendor
+);
+
 module.exports = router;

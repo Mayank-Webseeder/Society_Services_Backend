@@ -10,7 +10,6 @@ const adminRoutes = require("./routes/adminRoutes");
 const vendorRoutes = require("./routes/vendorRoutes");
 const societyRoutes = require("./routes/societyRoutes");
 const swaggerSpec = require("./swaggerOptions");
-const { refreshServices } = require("./utils/fetchServices");
 dotenv.config();
 
 const app = express();
@@ -18,12 +17,13 @@ const PORT = process.env.PORT || 5003;
 
 // ✅ CORS Configuration
 const allowedOrigins = [
-	"http://localhost:5173",
-	"http://localhost:5174",
-	"https://social-services-app.vercel.app",
-	"https://delightful-pastelito-988e6f.netlify.app",
-	"https://admin.mysocietyneeds.com",
-	"https://admin-society.webseeder.tech",
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "https://social-services-app.vercel.app",
+        "https://delightful-pastelito-988e6f.netlify.app",
+        "https://admin.mysocietyneeds.com",
+        "https://admin-society.webseeder.tech",
+        "https://vendor.mysocietyneeds.com"
 ];
 
 app.use(
@@ -78,13 +78,12 @@ app.use("/api/vendor", vendorRoutes);
 app.use("/api/society", societyRoutes);
 app.use("/api/jobs", jobRoutes); // e.g. POST /api/jobs/create, GET /api/jobs/nearby
 app.use("/api/applications", applicationRoutes); // e.g. POST /api/applications/:id/apply
-console.log("razor credentical ",process.env.RAZORPAY_KEY_ID," ",process.env.RAZORPAY_KEY_SECRET);
 // ✅ MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
 	.then(() => {
 		console.log("✅ MongoDB connected");
 		app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
-		refreshServices(); // Load services on startup
+
 	})
 	.catch((err) => {
 		console.error("❌ MongoDB connection error:", err);

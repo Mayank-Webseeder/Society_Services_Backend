@@ -1,7 +1,7 @@
 const Application = require("../models/Application.js");
 const Job = require("../models/Job");
 const Vendor = require("../models/vendorSchema");
-
+const Subscription = require("../models/Subscription");
 // 🔹 Vendor applies to job (quotation only)
 exports.applyToJob = async (req, res) => {
 	try {
@@ -11,7 +11,10 @@ exports.applyToJob = async (req, res) => {
 
 		const job = await Job.findById(jobId);
 		if (!job) return res.status(404).json({ msg: "Job not found" });
-
+		const subscription = await Subscription.findOne({ vendor: req.user.id, isActive: true });
+		if (!subscription) {
+			return res.status(403).json({ msg: "Active subscription required to apply for jobs." });
+		}
 		// ✅ Prevent applying if job is already completed
 		if (job.status === "Completed") {
 			return res.status(400).json({ msg: "Cannot apply. This job is already completed." });
@@ -120,7 +123,7 @@ exports.approveApplication = async (req, res) => {
 
 		// ✅ Approve current application
 		application.status = "approved";
-		
+
 		await application.save();
 
 		// ✅ Reject all other applications for the same job

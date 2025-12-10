@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const nonVerified = require("../../models/notVerified");
 const Subscription = require("../../models/Subscription");
 const { sendOTP, generate4DigitOtp } = require("../../thirdPartyAPI/nodeMailerSMTP/smtpforTOTP");
+const Services = require("../../models/Services");
 
 // ✅ VENDOR SIGNUP
 exports.signupVendor = async (req, res) => {
@@ -83,7 +84,7 @@ exports.loginVendorUsingEmail = async (req, res) => {
 		}
 		const isMatch = await bcrypt.compare(password, vendor.password);
 		if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
-		const token = jwt.sign({ id: vendor._id, role: vendor.role }, process.env.JWT_SECRET,{ expiresIn: "7d" });
+		const token = jwt.sign({ id: vendor._id, role: vendor.role }, process.env.JWT_SECRET);
 
 		res.json({
 			authToken: token,
@@ -100,7 +101,6 @@ exports.loginVendorUsingContact = async (req, res) => {
 	try {
 		const { contactNumber, password } = req.body;
 		const vendor = await Vendor.findOne({ contactNumber });
-		console.log(contactNumber,password);
 		if (!vendor) return res.status(400).json({ msg: "Invalid credentials" });
 
 		if (vendor.isBlacklisted) {
@@ -120,9 +120,8 @@ exports.loginVendorUsingContact = async (req, res) => {
 		const isMatch = await bcrypt.compare(password, vendor.password);
 		if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
 
-		const token = jwt.sign({ id: vendor._id, role: vendor.role }, process.env.JWT_SECRET,
-  { expiresIn: "7d" });
-			console.log(token);
+		const token = jwt.sign({ id: vendor._id, role: vendor.role }, process.env.JWT_SECRET);
+		// console.log(token);
 		res.json({
 			authToken: token,
 			role: vendor.role,
@@ -207,90 +206,115 @@ exports.validateContactNumber = async (req, res) => {
 };
 
 // ✅ CREATE VENDOR PROFILE
+
 exports.createVendorProfile = async (req, res) => {
 	try {
 		const vendorId = req.user.id;
 		const updateData = {};
 
-		// Update fields
-		if (req.body.name) updateData.name = req.body.name;
-		if (req.body.businessName) updateData.businessName = req.body.businessName;
-		if (req.body.experience) updateData.experience = req.body.experience + " years";
-		if (req.body.contactNumber) updateData.contactNumber = req.body.contactNumber;
-		if (req.body.location) updateData.location = req.body.location;
-		if (req.body.address) updateData.address = req.body.address;
-		// if (req.body.paymentMethods) updateData.paymentMethods = req.body.paymentMethods;
-		// if (req.body.lastPayments) updateData.lastPayments = req.body.lastPayments;
-		if (req.body.services) {
-			const vendor = await Vendor.findById(vendorId).select("services");
-			updateData.services = Array.from(new Set([...(vendor.services || []), ...req.body.services]));
+		const {
+			name,
+			businessName,
+			experience,
+			contactNumber,
+			location,
+			address,
+			email,
+			services, // Array of service IDs (must exist in Services model)
+			paymentSuccess,
+		} = req.body;
+
+		if (name) updateData.name = name;
+		if (businessName) updateData.businessName = businessName;
+		if (experience) updateData.experience = `${experience} years`;
+		if (contactNumber) updateData.contactNumber = contactNumber;
+		if (location) updateData.location = location;
+		if (address) updateData.address = address;
+		if (email) updateData.email = email;
+		if (req.idProofFile) updateData.idProof = req.idProofFile.path;
+
+		// 🔒 Enforce service validation
+		if (services && services.length > 0) {
+			const inputServiceIds = Array.isArray(services) ? services : [services];
+
+			// Find only valid services (admin-created & active)
+			const validServices = await Services.find({
+				_id: { $in: inputServiceIds },
+				isActive: true,
+			});
+
+			// ❌ If any invalid service ID is passed, reject the entire request
+			if (validServices.length !== inputServiceIds.length) {
+				const invalidIds = inputServiceIds.filter((id) => !validServices.map((s) => s._id.toString()).includes(id));
+				return res.status(400).json({
+					success: false,
+					msg: "Invalid or inactive services detected.",
+					invalidServices: invalidIds,
+				});
+			}
+
+			// Merge vendor’s current services with valid ones (prevent duplicates)
+			updateData.services = validServices.map((s) => s._id.toString());
 		}
-		if (req.body.email) updateData.email = req.body.email;
-		// Working days
-		// console.log("Incoming workingDays:", req.body.workingDays, typeof req.body.workingDays);
 
-		
-
-		// idProof
-		if (req.idProofFile) {
-			updateData.idProof = req.idProofFile.path; // "/uploads/xxxx.png"
-		}
-
-		if (req.body.paymentSuccess) {
-			updateData.isSubscribed = true; // mark subscription as true
-		}
-
+		// ✅ Mark profile as complete
 		updateData.isProfileCompleted = true;
 
-		// ✅ First update the vendor
 		const updatedVendor = await Vendor.findByIdAndUpdate(vendorId, updateData, {
 			new: true,
 			runValidators: true,
-		});
+		}).populate("services", "name price isActive");
 
 		if (!updatedVendor) {
 			return res.status(404).json({ success: false, message: "Vendor not found" });
 		}
 
-		// ✅ Then create subscription if paymentSuccess
+		// 💳 If payment is successful, create a subscription
 		let subscriptionData = null;
-		if (req.body.paymentSuccess === true || req.body.paymentSuccess === "true") {
+		if (paymentSuccess === true || paymentSuccess === "true") {
+			const activeServices = updatedVendor.services.filter((s) => s.isActive);
+			const totalPrice = activeServices.reduce((sum, s) => sum + s.price, 0);
+
+			const startDate = new Date();
+			const endDate = new Date(startDate);
+			endDate.setFullYear(endDate.getFullYear() + 1);
+
 			subscriptionData = await Subscription.create({
 				vendor: updatedVendor._id,
 				vendorName: updatedVendor.name,
-				vendorReferenceId: updatedVendor.vendorReferenceId,
-				planPrice: 999,
-				startDate: new Date(),
-				endDate: new Date(Date.now() + 12 * 30 * 24 * 60 * 60 * 1000), // 360 days
+				planPrice: totalPrice,
+				startDate,
+				endDate,
 				paymentStatus: "Paid",
 				subscriptionStatus: "Active",
 				isActive: true,
-				services: (req.body.services || []).map((service) => ({
-					name: service,
-					proratedPrice: 999,
+				services: activeServices.map((s) => ({
+					service: s._id,
+					name: s.name,
+					proratedPrice: s.price,
 				})),
 			});
 
-			// Link subscription to vendor
 			updatedVendor.subscription = {
 				isActive: true,
 				expiresAt: subscriptionData.endDate,
 			};
 			await updatedVendor.save();
+
 			return res.status(201).json({
 				success: true,
-				idProof: updateData.idProof || "No File Sent",
 				message: "Vendor profile created successfully with subscription!",
 				subscription: subscriptionData,
 			});
 		}
 
-		return res.status(201).json({
+		res.status(201).json({
 			success: true,
-			idProof: updateData.idProof || "No File Sent",
 			message: "Vendor profile created successfully!",
+			vendor: updatedVendor,
 		});
 	} catch (error) {
+		console.error("❌ Error creating vendor profile:", error);
 		res.status(500).json({
 			success: false,
 			message: "Internal server error",

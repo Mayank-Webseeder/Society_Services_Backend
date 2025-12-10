@@ -3,6 +3,8 @@ const Application = require("../../models/Application");
 const Job = require("../../models/Job");
 const Feedback = require("../../models/FeedbackSchema.js");
 const SupportRequest = require("../../models/SupportSchema.js");
+const Notification = require("../../models/Notification");
+const Subscription = require("../../models/Subscription");
 exports.getMyApplications = async (req, res) => {
 	try {
 		const applications = await Application.find({ vendor: req.user.id })
@@ -10,11 +12,11 @@ exports.getMyApplications = async (req, res) => {
 				path: "job",
 				populate: {
 					path: "society",
-					select: "username email buildingName address residentsCount location"
-				}
+					select: "username email buildingName address residentsCount location",
+				},
 			})
 			.lean();
-			console.log(req.user.id," ",applications);
+		// console.log(req.user.id," ",applications);
 		res.json(applications);
 	} catch (err) {
 		console.error("Error in getMyApplications:", err);
@@ -29,17 +31,12 @@ exports.getVendorDashboard = async (req, res) => {
 			vendor: req.user.id,
 			status: "approved",
 		});
-		const ongoingJobs = await Job.countDocuments({
-			"applications.vendor": req.user.id,
-			status: "Ongoing",
-		});
 
 		res.json({
 			msg: "Vendor Dashboard Data",
 			stats: {
 				totalApplications,
 				approvedApplications,
-				ongoingJobs,
 			},
 		});
 	} catch (err) {
@@ -50,11 +47,28 @@ exports.getVendorDashboard = async (req, res) => {
 // ✅ Vendor → View Profile
 exports.getVendorProfile = async (req, res) => {
 	try {
-		const vendor = await Vendor.findById(req.user.id).select("-password");
-		if (!vendor) return res.status(404).json({ msg: "Vendor not found" });
-		res.json(vendor);
+		const vendor = await Vendor.findById(req.user.id)
+			.select("-password -__v") // hide sensitive/unnecessary fields
+			.populate({
+				path: "services",
+				select: "name price isActive", // show only relevant fields from Services model
+			})
+			.lean();
+
+		if (!vendor) {
+			return res.status(404).json({ msg: "Vendor not found" });
+		}
+
+		res.status(200).json({
+			success: true,
+			vendor,
+		});
 	} catch (err) {
-		res.status(500).json({ msg: "Failed to fetch profile", error: err.message });
+		console.error("Error fetching vendor profile:", err);
+		res.status(500).json({
+			msg: "Failed to fetch profile",
+			error: err.message,
+		});
 	}
 };
 
@@ -67,19 +81,18 @@ exports.updateVendorProfile = async (req, res) => {
 			"profilePicture",
 			"contactNumber",
 			"experience",
-			"services",
 			"address",
 			"location",
 			"paymentMethods",
 			"idProof",
-			"email"
+			"email",
 		];
 
 		const updates = {};
-		
+
 		for (const key of allowedFields) {
 			if (req.body[key] !== undefined) {
-					updates[key] = req.body[key];
+				updates[key] = req.body[key];
 			}
 		}
 
@@ -131,28 +144,89 @@ exports.getFeedbacks = async (req, res) => {
 	}
 };
 exports.createSupportRequest = async (req, res) => {
-  try {
-	  const { message } = req.body;
-	  const vendor = req.user.id;
-    const imageUrl = req.body.imageUrl || null; // set by uploadHelpImage middleware
+	try {
+		const { message } = req.body;
+		const vendor = req.user.id;
+		const imageUrl = req.body.imageUrl || null; // set by uploadHelpImage middleware
 
-    if (!message) {
-      return res.status(400).json({ success: false, message: "Message is required" });
-    }
+		if (!message) {
+			return res.status(400).json({ success: false, message: "Message is required" });
+		}
 
-    const supportRequest = await SupportRequest.create({
-      vendor,
-      message,
-      imageUrl,
-    });
+		const supportRequest = await SupportRequest.create({
+			vendor,
+			message,
+			imageUrl,
+		});
 
-    res.status(201).json({
-      success: true,
-      message: "Support request submitted successfully",
-      supportRequest,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: "Server error", error: err.message });
-  }
+		res.status(201).json({
+			success: true,
+			message: "Support request submitted successfully",
+			supportRequest,
+		});
+	} catch (err) {
+		console.error(err);
+		res.status(500).json({ success: false, message: "Server error", error: err.message });
+	}
+};
+// DELETE VENDOR ACCOUNT API
+exports.deleteVendorAccount = async (req, res) => {
+	try {
+		const vendorId = req.user.id;
+		const DUMMY_VENDOR_ID = process.env.DUMMY_VENDOR;
+
+		if (!DUMMY_VENDOR_ID) {
+			return res.status(500).json({
+				success: false,
+				msg: "DUMMY_VENDOR_ID is missing in environment variables",
+			});
+		}
+
+		// 1️⃣ CHECK ACTIVE SUBSCRIPTION
+		const activeSubscription = await Subscription.findOne({
+			vendor: vendorId,
+			isActive: true,
+			subscriptionStatus: "Active",
+			endDate: { $gt: new Date() },
+		});
+
+		if (activeSubscription) {
+			return res.status(400).json({
+				success: false,
+				msg: "You cannot delete your account. Active subscription found.",
+			});
+		}
+
+		// 2️⃣ REPLACE ALL REFERENCES WITH DUMMY USER
+
+		// Applications
+		await Application.updateMany({ vendor: vendorId }, { $set: { vendor: DUMMY_VENDOR_ID } });
+
+		// Notifications
+		await Notification.updateMany({ vendor: vendorId }, { $set: { vendor: DUMMY_VENDOR_ID } });
+
+		// Subscriptions
+		await Subscription.updateMany(
+			{ vendor: vendorId },
+			{ $set: { vendor: DUMMY_VENDOR_ID, subscriptionStatus: "Cancelled", isActive: false } }
+		);
+
+		// Support Requests
+		await SupportRequest.updateMany({ vendor: vendorId }, { $set: { vendor: DUMMY_VENDOR_ID } });
+
+		// 3️⃣ DELETE THE VENDOR
+		await Vendor.findByIdAndDelete(vendorId);
+
+		res.status(200).json({
+			success: true,
+			msg: "Vendor account deleted successfully. Data moved to dummy user.",
+		});
+	} catch (err) {
+		console.error("❌ Error deleting vendor account:", err);
+		res.status(500).json({
+			success: false,
+			msg: "Failed to delete vendor account",
+			error: err.message,
+		});
+	}
 };
