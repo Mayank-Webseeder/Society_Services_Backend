@@ -230,6 +230,10 @@ exports.createVendorProfile = async (req, res) => {
 		if (contactNumber) updateData.contactNumber = contactNumber;
 		if (location) updateData.location = location;
 		if (address) updateData.address = address;
+		if (Vendor.findOne({ email })) {
+			return res.status(400).json({ success: false, message: "Email already in use by another vendor." });
+		}
+
 		if (email) updateData.email = email;
 		if (req.idProofFile) updateData.idProof = req.idProofFile.path;
 
