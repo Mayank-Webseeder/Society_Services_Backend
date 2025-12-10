@@ -121,7 +121,7 @@ exports.loginVendorUsingContact = async (req, res) => {
 		if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
 
 		const token = jwt.sign({ id: vendor._id, role: vendor.role }, process.env.JWT_SECRET);
-			// console.log(token);
+		// console.log(token);
 		res.json({
 			authToken: token,
 			role: vendor.role,
@@ -207,130 +207,121 @@ exports.validateContactNumber = async (req, res) => {
 
 // ✅ CREATE VENDOR PROFILE
 
-
 exports.createVendorProfile = async (req, res) => {
-  try {
-    const vendorId = req.user.id;
-    const updateData = {};
+	try {
+		const vendorId = req.user.id;
+		const updateData = {};
 
-    const {
-      name,
-      businessName,
-      experience,
-      contactNumber,
-      location,
-      address,
-      email,
-      services, // Array of service IDs (must exist in Services model)
-      paymentSuccess,
-    } = req.body;
+		const {
+			name,
+			businessName,
+			experience,
+			contactNumber,
+			location,
+			address,
+			email,
+			services, // Array of service IDs (must exist in Services model)
+			paymentSuccess,
+		} = req.body;
 
-    if (name) updateData.name = name;
-    if (businessName) updateData.businessName = businessName;
-    if (experience) updateData.experience = `${experience} years`;
-    if (contactNumber) updateData.contactNumber = contactNumber;
-    if (location) updateData.location = location;
-    if (address) updateData.address = address;
-    if (email) updateData.email = email;
-    if (req.idProofFile) updateData.idProof = req.idProofFile.path;
+		if (name) updateData.name = name;
+		if (businessName) updateData.businessName = businessName;
+		if (experience) updateData.experience = `${experience} years`;
+		if (contactNumber) updateData.contactNumber = contactNumber;
+		if (location) updateData.location = location;
+		if (address) updateData.address = address;
+		if (email) updateData.email = email;
+		if (req.idProofFile) updateData.idProof = req.idProofFile.path;
 
-    // 🔒 Enforce service validation
-    if (services && services.length > 0) {
-      const inputServiceIds = Array.isArray(services) ? services : [services];
+		// 🔒 Enforce service validation
+		if (services && services.length > 0) {
+			const inputServiceIds = Array.isArray(services) ? services : [services];
 
-      // Find only valid services (admin-created & active)
-      const validServices = await Services.find({
-        _id: { $in: inputServiceIds },
-        isActive: true,
-      });
+			// Find only valid services (admin-created & active)
+			const validServices = await Services.find({
+				_id: { $in: inputServiceIds },
+				isActive: true,
+			});
 
-      // ❌ If any invalid service ID is passed, reject the entire request
-      if (validServices.length !== inputServiceIds.length) {
-        const invalidIds = inputServiceIds.filter(
-          (id) => !validServices.map((s) => s._id.toString()).includes(id)
-        );
-        return res.status(400).json({
-          success: false,
-          msg: "Invalid or inactive services detected.",
-          invalidServices: invalidIds,
-        });
-      }
+			// ❌ If any invalid service ID is passed, reject the entire request
+			if (validServices.length !== inputServiceIds.length) {
+				const invalidIds = inputServiceIds.filter((id) => !validServices.map((s) => s._id.toString()).includes(id));
+				return res.status(400).json({
+					success: false,
+					msg: "Invalid or inactive services detected.",
+					invalidServices: invalidIds,
+				});
+			}
 
-      // Merge vendor’s current services with valid ones (prevent duplicates)
-      const vendor = await Vendor.findById(vendorId).select("services");
-      const mergedServices = Array.from(
-        new Set([...(vendor.services.map((s) => s.toString()) || []), ...validServices.map((s) => s._id.toString())])
-      );
+			// Merge vendor’s current services with valid ones (prevent duplicates)
+			updateData.services = validServices.map((s) => s._id.toString());
+		}
 
-      updateData.services = mergedServices;
-    }
+		// ✅ Mark profile as complete
+		updateData.isProfileCompleted = true;
 
-    // ✅ Mark profile as complete
-    updateData.isProfileCompleted = true;
+		const updatedVendor = await Vendor.findByIdAndUpdate(vendorId, updateData, {
+			new: true,
+			runValidators: true,
+		}).populate("services", "name price isActive");
 
-    const updatedVendor = await Vendor.findByIdAndUpdate(vendorId, updateData, {
-      new: true,
-      runValidators: true,
-    }).populate("services", "name price isActive");
+		if (!updatedVendor) {
+			return res.status(404).json({ success: false, message: "Vendor not found" });
+		}
 
-    if (!updatedVendor) {
-      return res.status(404).json({ success: false, message: "Vendor not found" });
-    }
+		// 💳 If payment is successful, create a subscription
+		let subscriptionData = null;
+		if (paymentSuccess === true || paymentSuccess === "true") {
+			const activeServices = updatedVendor.services.filter((s) => s.isActive);
+			const totalPrice = activeServices.reduce((sum, s) => sum + s.price, 0);
 
-    // 💳 If payment is successful, create a subscription
-    let subscriptionData = null;
-    if (paymentSuccess === true || paymentSuccess === "true") {
-      const activeServices = updatedVendor.services.filter((s) => s.isActive);
-      const totalPrice = activeServices.reduce((sum, s) => sum + s.price, 0);
+			const startDate = new Date();
+			const endDate = new Date(startDate);
+			endDate.setFullYear(endDate.getFullYear() + 1);
 
-      const startDate = new Date();
-      const endDate = new Date(startDate);
-      endDate.setFullYear(endDate.getFullYear() + 1);
+			subscriptionData = await Subscription.create({
+				vendor: updatedVendor._id,
+				vendorName: updatedVendor.name,
+				planPrice: totalPrice,
+				startDate,
+				endDate,
+				paymentStatus: "Paid",
+				subscriptionStatus: "Active",
+				isActive: true,
+				services: activeServices.map((s) => ({
+					service: s._id,
+					name: s.name,
+					proratedPrice: s.price,
+				})),
+			});
 
-      subscriptionData = await Subscription.create({
-        vendor: updatedVendor._id,
-        vendorName: updatedVendor.name,
-        planPrice: totalPrice,
-        startDate,
-        endDate,
-        paymentStatus: "Paid",
-        subscriptionStatus: "Active",
-        isActive: true,
-        services: activeServices.map((s) => ({
-          service: s._id,
-          name: s.name,
-          proratedPrice: s.price,
-        })),
-      });
+			updatedVendor.subscription = {
+				isActive: true,
+				expiresAt: subscriptionData.endDate,
+			};
+			await updatedVendor.save();
 
-      updatedVendor.subscription = {
-        isActive: true,
-        expiresAt: subscriptionData.endDate,
-      };
-      await updatedVendor.save();
+			return res.status(201).json({
+				success: true,
+				message: "Vendor profile created successfully with subscription!",
+				subscription: subscriptionData,
+			});
+		}
 
-      return res.status(201).json({
-        success: true,
-        message: "Vendor profile created successfully with subscription!",
-        subscription: subscriptionData,
-      });
-    }
-
-    res.status(201).json({
-      success: true,
-      message: "Vendor profile created successfully!",
-      vendor: updatedVendor,
-    });
-  } catch (error) {
-    console.error("❌ Error creating vendor profile:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
-  }
+		res.status(201).json({
+			success: true,
+			message: "Vendor profile created successfully!",
+			vendor: updatedVendor,
+		});
+	} catch (error) {
+		console.error("❌ Error creating vendor profile:", error);
+		res.status(500).json({
+			success: false,
+			message: "Internal server error",
+			error: error.message,
+		});
+	}
 };
-
 
 // ✅ FORGOT PASSWORD
 exports.forgetPassword = async (req, res) => {
