@@ -230,11 +230,18 @@ exports.createVendorProfile = async (req, res) => {
 		if (contactNumber) updateData.contactNumber = contactNumber;
 		if (location) updateData.location = location;
 		if (address) updateData.address = address;
-		if (Vendor.findOne({ email })) {
-			return res.status(400).json({ success: false, message: "Email already in use by another vendor." });
-		}
 
 		if (email) updateData.email = email;
+		const existingVendor = await Vendor.findOne({ email });
+
+		// If email exists AND it belongs to another vendor
+		if (existingVendor && existingVendor._id.toString() !== req.user.id.toString()) {
+			return res.status(400).json({
+				success: false,
+				message: "Email already in use by another vendor.",
+			});
+		}
+
 		if (req.idProofFile) updateData.idProof = req.idProofFile.path;
 
 		// 🔒 Enforce service validation
