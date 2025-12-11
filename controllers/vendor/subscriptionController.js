@@ -101,8 +101,8 @@ exports.verifyRazorpayPayment = async (req, res) => {
 		// end = startDate + 1 year - 1 day at 23:59:59.999
 		const endDate = new Date(startDate);
 		endDate.setFullYear(endDate.getFullYear() + 1); // move 1 year forward
-		endDate.setDate(endDate.getDate() - 1);         // back one day to get "one full year"
-		endDate.setHours(23, 59, 59, 999);              // end of that day
+		endDate.setDate(endDate.getDate() - 1); // back one day to get "one full year"
+		endDate.setHours(23, 59, 59, 999); // end of that day
 
 		// Mark old subscriptions inactive
 		await Subscription.updateMany({ vendor: vendorId }, { isActive: false, subscriptionStatus: "Expired" });
@@ -118,8 +118,6 @@ exports.verifyRazorpayPayment = async (req, res) => {
 			subscriptionStatus: "Active",
 			isActive: true,
 			services: vendor.services.map((s) => ({
-				// NOTE: include `service` id only if your Subscription schema has that field.
-				// If your schema only allows name/proratedPrice/addedOn, remove `service: s._id`.
 				service: s._id,
 				name: s.name,
 				addedOn: startDate,
@@ -136,7 +134,6 @@ exports.verifyRazorpayPayment = async (req, res) => {
 		res.status(500).json({ msg: "Payment verification failed", error: err.message });
 	}
 };
-
 
 // ✅ Check subscription status
 exports.checkSubscriptionStatus = async (req, res) => {
@@ -183,7 +180,6 @@ exports.checkSubscriptionStatus = async (req, res) => {
 
 			startDate: subscription.startDate,
 			endDate: subscription.endDate,
-			expiresOn: subscription.endDate,
 
 			// Metadata
 			createdAt: subscription.createdAt,
@@ -502,7 +498,6 @@ exports.previewSubscriptionPricing = async (req, res) => {
 		});
 	}
 };
-
 
 exports.getSubscriptionHistory = async (req, res) => {
 	try {
