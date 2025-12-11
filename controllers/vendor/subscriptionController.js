@@ -74,7 +74,6 @@ exports.createRazorpayOrder = async (req, res) => {
 	}
 };
 
-
 // ✅ Verify Razorpay Payment and activate subscription
 exports.verifyRazorpayPayment = async (req, res) => {
 	try {
@@ -94,10 +93,18 @@ exports.verifyRazorpayPayment = async (req, res) => {
 		}
 
 		const totalPrice = vendor.services.reduce((sum, s) => sum + (s.price || 0), 0);
-		const startDate = new Date();
-		const endDate = new Date(startDate);
-		endDate.setFullYear(endDate.getFullYear() + 1);
 
+		const startDate = new Date();
+
+		// ▶️ Make the subscription last exactly 1 year:
+		// start = purchase moment
+		// end = startDate + 1 year - 1 day at 23:59:59.999
+		const endDate = new Date(startDate);
+		endDate.setFullYear(endDate.getFullYear() + 1); // move 1 year forward
+		endDate.setDate(endDate.getDate() - 1);         // back one day to get "one full year"
+		endDate.setHours(23, 59, 59, 999);              // end of that day
+
+		// Mark old subscriptions inactive
 		await Subscription.updateMany({ vendor: vendorId }, { isActive: false, subscriptionStatus: "Expired" });
 
 		const newSubscription = await Subscription.create({
@@ -111,6 +118,8 @@ exports.verifyRazorpayPayment = async (req, res) => {
 			subscriptionStatus: "Active",
 			isActive: true,
 			services: vendor.services.map((s) => ({
+				// NOTE: include `service` id only if your Subscription schema has that field.
+				// If your schema only allows name/proratedPrice/addedOn, remove `service: s._id`.
 				service: s._id,
 				name: s.name,
 				addedOn: startDate,
@@ -127,6 +136,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
 		res.status(500).json({ msg: "Payment verification failed", error: err.message });
 	}
 };
+
 
 // ✅ Check subscription status
 exports.checkSubscriptionStatus = async (req, res) => {
@@ -184,16 +194,14 @@ exports.checkSubscriptionStatus = async (req, res) => {
 		};
 
 		res.status(200).json(responseData);
-
 	} catch (err) {
 		console.error("❌ checkSubscriptionStatus error:", err);
 		res.status(500).json({
 			msg: "Failed to check subscription",
-			error: err.message
+			error: err.message,
 		});
 	}
 };
-
 
 // ✅ Create Razorpay order for adding new services
 exports.createAddServiceOrder = async (req, res) => {
@@ -268,13 +276,9 @@ exports.verifyAddServicePayment = async (req, res) => {
 
 		// 🔐 Step 1: Verify Razorpay signature
 		const body = `${razorpay_order_id}|${razorpay_payment_id}`;
-		const expectedSignature = crypto
-			.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-			.update(body)
-			.digest("hex");
+		const expectedSignature = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET).update(body).digest("hex");
 
-		if (expectedSignature !== razorpay_signature)
-			return res.status(400).json({ msg: "Invalid payment signature" });
+		if (expectedSignature !== razorpay_signature) return res.status(400).json({ msg: "Invalid payment signature" });
 
 		// 🧩 Step 2: Validate vendor & subscription
 		const vendor = await Vendor.findById(vendorId);
@@ -294,22 +298,17 @@ exports.verifyAddServicePayment = async (req, res) => {
 
 		// 🧩 Step 5: Find valid services
 		const services = await Services.find({
-			$or: [
-				{ _id: { $in: byId } },
-				{ name: { $in: byName.map((s) => new RegExp(`^${s.trim()}$`, "i")) } },
-			],
+			$or: [{ _id: { $in: byId } }, { name: { $in: byName.map((s) => new RegExp(`^${s.trim()}$`, "i")) } }],
 			isActive: true,
 		});
 
-		if (!services.length)
-			return res.status(400).json({ msg: "No valid active services found for provided names or IDs" });
+		if (!services.length) return res.status(400).json({ msg: "No valid active services found for provided names or IDs" });
 
 		// 🧮 Step 6: Filter out already existing ones
 		const existingServiceIds = vendor.services.map((s) => s.toString());
 		const uniqueServices = services.filter((s) => !existingServiceIds.includes(s._id.toString()));
 
-		if (!uniqueServices.length)
-			return res.status(400).json({ msg: "All provided services already exist" });
+		if (!uniqueServices.length) return res.status(400).json({ msg: "All provided services already exist" });
 
 		// 💸 Step 7: Add services to vendor and subscription
 		uniqueServices.forEach((s) => {
@@ -364,12 +363,10 @@ exports.previewSubscriptionPricing = async (req, res) => {
 			});
 		}
 
-		// 🧹 Normalize names
-		const cleanNames = services
-			.map((n) => (typeof n === "string" ? n.trim() : ""))
-			.filter(Boolean);
+		// Normalize names
+		const cleanNames = services.map((n) => (typeof n === "string" ? n.trim() : "")).filter(Boolean);
 
-		// 🧾 Find matching services (by name, case-insensitive)
+		// Find matching services (by name, case-insensitive)
 		const serviceDocs = await Services.find({
 			name: {
 				$in: cleanNames.map((n) => new RegExp(`^${n}$`, "i")),
@@ -387,9 +384,7 @@ exports.previewSubscriptionPricing = async (req, res) => {
 
 		// Check for any invalid names
 		const foundNamesLower = serviceDocs.map((s) => s.name.toLowerCase());
-		const invalidNames = cleanNames.filter(
-			(n) => !foundNamesLower.includes(n.toLowerCase())
-		);
+		const invalidNames = cleanNames.filter((n) => !foundNamesLower.includes(n.toLowerCase()));
 
 		if (invalidNames.length > 0) {
 			return res.status(400).json({
@@ -399,11 +394,20 @@ exports.previewSubscriptionPricing = async (req, res) => {
 			});
 		}
 
-		// 🧮 CASE 1: NEW SUBSCRIPTION
+		// CASE 1: NEW SUBSCRIPTION — exact 1 year from purchase
 		if (type === "new") {
 			const now = new Date();
+
+			// Make the subscription last exactly 1 year:
+			// end = (now + 1 year) - 1 day at 23:59:59.999
+			const validFrom = new Date(now);
 			const validTill = new Date(now);
-			validTill.setFullYear(validTill.getFullYear() + 1);
+			validTill.setFullYear(validTill.getFullYear() + 1); // +1 year
+			validTill.setDate(validTill.getDate() - 1); // -1 day
+			validTill.setHours(23, 59, 59, 999);
+
+			const oneDayMs = 1000 * 60 * 60 * 24;
+			const durationDays = Math.max(1, Math.ceil((validTill - validFrom) / oneDayMs));
 
 			const perService = serviceDocs.map((s) => ({
 				id: s._id,
@@ -419,13 +423,13 @@ exports.previewSubscriptionPricing = async (req, res) => {
 				perService,
 				totalPrice,
 				currency: "INR",
-				validFrom: now,
+				validFrom,
 				validTill,
-				durationDays: 365,
+				durationDays,
 			});
 		}
 
-		// 🧮 CASE 2: ADD TO EXISTING SUBSCRIPTION
+		// CASE 2: ADD TO EXISTING SUBSCRIPTION
 		if (type === "add") {
 			// Fetch vendor + active subscription
 			const [vendor, subscription] = await Promise.all([
@@ -446,9 +450,7 @@ exports.previewSubscriptionPricing = async (req, res) => {
 			}
 
 			const now = new Date();
-			const remainingDays = Math.ceil(
-				(new Date(subscription.endDate) - now) / (1000 * 60 * 60 * 24)
-			);
+			const remainingDays = Math.ceil((new Date(subscription.endDate) - now) / (1000 * 60 * 60 * 24));
 
 			if (remainingDays <= 0) {
 				return res.status(400).json({
@@ -459,9 +461,7 @@ exports.previewSubscriptionPricing = async (req, res) => {
 
 			// Remove services that vendor already has
 			const existingServiceIds = (vendor.services || []).map((s) => s.toString());
-			const uniqueServices = serviceDocs.filter(
-				(s) => !existingServiceIds.includes(s._id.toString())
-			);
+			const uniqueServices = serviceDocs.filter((s) => !existingServiceIds.includes(s._id.toString()));
 
 			if (!uniqueServices.length) {
 				return res.status(400).json({
@@ -470,12 +470,9 @@ exports.previewSubscriptionPricing = async (req, res) => {
 				});
 			}
 
-			// Same prorated formula as your add-service order
+			// Same prorated formula as add-service order
 			const perService = uniqueServices.map((s) => {
-				const proratedPrice = Math.max(
-					Math.round((remainingDays / 365) * (s.price || 0)),
-					1
-				);
+				const proratedPrice = Math.max(Math.round((remainingDays / 365) * (s.price || 0)), 1);
 				return {
 					id: s._id,
 					name: s.name,
@@ -484,10 +481,7 @@ exports.previewSubscriptionPricing = async (req, res) => {
 				};
 			});
 
-			const totalPrice = perService.reduce(
-				(sum, s) => sum + s.proratedPrice,
-				0
-			);
+			const totalPrice = perService.reduce((sum, s) => sum + s.proratedPrice, 0);
 
 			return res.status(200).json({
 				success: true,
