@@ -7,24 +7,24 @@ const {
   getMyPostedJobs,
   filterJobsByTypeAndDate,
   expireOldJobs,
+  deleteJob
 } = require("../controllers/jobController");
 
 const { authMiddleware } = require("../middleware/authMiddleware");
 const { authorizeRoles } = require("../middleware/roleBasedAuth");
 
+
 router.post("/create", authMiddleware, authorizeRoles("society"), createJob);
 
 router.get("/nearby", authMiddleware, authorizeRoles("vendor"), getNearbyJobs);
 
-router.get("/:id", authMiddleware, getJobById);
+router.get("/job/:id", authMiddleware, getJobById);
 
 router.get("/filter", authMiddleware, filterJobsByTypeAndDate);
 
 router.post("/expire-old", expireOldJobs);
 
-router.get("/test", (req, res) => {
-  res.send("Job route working");
-});
+router.delete("/delete/:id", authMiddleware, authorizeRoles("society"),deleteJob)
 
 module.exports = router;
 

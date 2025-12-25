@@ -152,6 +152,21 @@ exports.getNearbyJobs = async (req, res) => {
 
 //68e4ad9208f45e6db1ee7a46
 
+
+exports.deleteJob = async (req, res) => {
+	try {
+		const { id } = req.params;
+		console.log(id);
+		const job = await Job.findById(id);
+		if (!job) return res.status(404).json({ msg: "Job not found" });
+		await Job.deleteOne({ _id: id });
+		res.json({ msg: "Job deleted successfully" });
+	} catch (err) {
+		console.log(err);
+		res.status(500).json({ msg: "Error deleting job", error: err.message });
+	}
+};
+
 // 3. Get Single Job by ID
 exports.getJobById = async (req, res) => {
 	try {
