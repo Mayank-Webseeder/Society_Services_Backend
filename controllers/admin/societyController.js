@@ -24,9 +24,37 @@ exports.approveSociety = async (req, res) => {
 	}
 };
 
+
+
+exports.disapproveSociety = async (req, res) => {
+	try {
+		const { societyId } = req.params;
+		const society = await Society.findById(societyId);
+		if (!society){
+			return res.status(404).json({ msg: "Society not found" });
+		}
+
+		if (!society.isApproved){
+			return res.status(400).json({ msg: "Already disapproved" });
+		}
+
+		society.isApproved = false;
+		await society.save();
+		console.log("society disapproved")
+		res.status(200).json({ msg: "Society approved" });
+	} catch (err) {
+		console.log(err);
+		res.status(500).json({ msg: "Error approving society", error: err.message });
+	}
+};
+
+
+
+
+
 exports.allSociety=async(req,res)=>{
 	try {
-		const data=await Society.find({},"buildingName")
+		const data=await Society.find({},"societyname")
 		res.status(200).json(data);
 	} catch (error) {
 		console.log(error);
@@ -51,7 +79,9 @@ exports.numofSociety=async(req,res)=>{
 exports.getPendingSocieties = async (req, res) => {
 	try {
 		const pending = await Society.find({ isApproved: false },"buildingName");
-		res.status(200).json(pending);
+		res.status(200).json({
+			totalPendingSocieties: pending.length,
+			pending});
 	} catch (err) {
 		console.log(err);
 		res.status(500).json({ msg: "Error fetching pending" });
@@ -62,7 +92,9 @@ exports.getPendingSocieties = async (req, res) => {
 exports.getApprovedSocieties = async (req, res) => {
 	try {
 		const approved = await Society.find({ isApproved: true });
-		res.status(200).json({ societies: approved });
+		res.status(200).json({
+			totalApprovedSocieties: approved.length,
+			approved});
 	} catch (err) {
 		res.status(500).json({ msg: "Error fetching approved", error: err.message });
 	}
@@ -118,6 +150,21 @@ exports.getAllSocietiesWithJobStats = async (req, res) => {
 		});
 	}
 };
+
+exports.deletesociety=async(req,res)=>{
+	try {
+		const { societyId } = req.params;
+		const society = await Society.findByIdAndDelete(societyId);
+		if (!society) {
+			return res.status(404).json({ msg: "Society not found" });
+		}
+		res.status(200).json({ msg: "Society deleted successfully" });
+	} catch (error) {
+		console.log(error);
+		res.status(500).json({ msg: "Error deleting society", error: error.message });
+	}
+};
+
 
 exports.getSocietyDetailsById = async (req, res) => {
 	try {

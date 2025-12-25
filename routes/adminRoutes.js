@@ -20,8 +20,10 @@ const {
 const {
   allSociety,
   approveSociety,
+  disapproveSociety,
   getPendingSocieties,
   getApprovedSocieties,
+  deletesociety,
   getSocietyDetailsById,
   numofSociety,
   getAllJobsBySocietyId,
@@ -46,6 +48,10 @@ router.get("/all-vendors", authenticate, authorizeRoles("admin"), getAllVendors)
 router.delete("/delete-vendor/:vendorId", authenticate, authorizeRoles("admin"), adminDeleteVendor);
 
 router.patch("/approve-society/:societyId", authenticate, authorizeRoles("admin"), approveSociety);
+router.patch("/disapprove-society/:societyId", authenticate, authorizeRoles("admin"), disapproveSociety);
+
+router.delete("/delete-society/:societyId", authenticate, authorizeRoles("admin"), deletesociety);
+
 router.get("/pending-societies", authenticate, authorizeRoles("admin"), getPendingSocieties);
 router.get("/approved-societies", authenticate, authorizeRoles("admin"), getApprovedSocieties);
 router.get("/all-society", authenticate, authorizeRoles("admin"), allSociety);

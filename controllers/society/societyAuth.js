@@ -8,8 +8,8 @@ const jwt = require("jsonwebtoken");
 
 exports.signupSociety = async (req, res) => {
 	try {
-		const { username, email, password, buildingName, address, residentsCount } = req.body;
-		if (!username || !email || !password || !buildingName || !address || !residentsCount) {
+		const { societyname,contact, email, password, address, city, pincode, residentsCount } = req.body;
+		if (!societyname || !contact || !email || !password || !address || !city || !pincode || !residentsCount) {
 			console.log("Missing fields in signupSociety:");
 			return res.status(400).json({ msg: "All fields are required" });
 		}
@@ -21,11 +21,13 @@ exports.signupSociety = async (req, res) => {
 		}
 		const hashed = await bcrypt.hash(password, 10);
 		const newSociety = new Society({
-			username,
+			societyname,
+			contact,
 			email,
 			password: hashed,
-			buildingName,
 			address,
+			city,
+			pincode,
 			residentsCount,
 		});
 		console.log("Saved Society:", newSociety);
