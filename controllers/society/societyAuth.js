@@ -49,7 +49,7 @@ exports.loginSociety = async (req, res) => {
 	}
     
     const society = await Society.findOne({ email });
-    if (!society) return res.status(400).json({ msg: "Invalid credentials" });
+    if (!society) return res.status(400).json({ msg: "Invalid credentials12" });
 
     const isMatch = await bcrypt.compare(password, society.password);
     if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });

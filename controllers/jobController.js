@@ -20,7 +20,7 @@ exports.createJob = async (req, res) => {
 			details,
 			contactNumber,
 			location,
-			offeredPricing,
+			offeredPrice,
 			scheduledFor,
 			quotationRequired,
 		} = req.body;
@@ -43,40 +43,13 @@ exports.createJob = async (req, res) => {
 				type: "Point",
 				coordinates: [parseFloat(longitude), parseFloat(latitude)],
 			},
-			offeredPrice: offeredPricing,
+			offeredPrice: offeredPrice,
 			scheduledFor,
 			quotationRequired: quotationRequired || false,
 			isActive: true,
 		});
 
 		await newJob.save();
-
-		// Notify all nearby, subscribed vendors matching role
-		// const nearbyVendors = await Vendor.find({
-		//   services: type,
-		//   isSubscribed: true,
-		//   location: {
-		//     $nearSphere: {
-		//       $geometry: {
-		//         type: "Point",
-		//         coordinates: [parseFloat(longitude), parseFloat(latitude)],
-		//       },
-		//       $maxDistance: 20000,
-		//     },
-		//   },                  //SEND NOTIFICATION IS GIVING ERROR
-		// });
-
-		// for (const vendor of nearbyVendors) {
-		//   await sendJobNotification(vendor, newJob);
-
-		//   await Notification.create({
-		//     userId: vendor._id,
-		//     title: `New ${type} job posted`,
-		//     message: `${title} - ${details}`,
-		//     link: `/vendor/jobs/${newJob._id}`,
-		//   });
-		// }
-
 		res.status(201).json({
 			msg: "Job posted successfully",
 			job: {
@@ -85,6 +58,7 @@ exports.createJob = async (req, res) => {
 			},
 		});
 	} catch (err) {
+		console.log(err)
 		res.status(500).json({ msg: "Failed to post job", error: err.message });
 	}
 };

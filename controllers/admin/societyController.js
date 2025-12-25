@@ -78,7 +78,7 @@ exports.numofSociety=async(req,res)=>{
 
 exports.getPendingSocieties = async (req, res) => {
 	try {
-		const pending = await Society.find({ isApproved: false },"buildingName");
+		const pending = await Society.find({ isApproved: false },"societyname");
 		res.status(200).json({
 			totalPendingSocieties: pending.length,
 			pending});
