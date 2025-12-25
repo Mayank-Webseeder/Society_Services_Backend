@@ -6,7 +6,7 @@ const { signupSociety, loginSociety, giveRating } = require("../controllers/soci
 const {
     getMyPostedJobs,
     getJobById,
-    getSocietyDetails,
+    getSocietyDetails, 
     getActiveSocientyJobs,
 } = require("../controllers/jobController");
 
