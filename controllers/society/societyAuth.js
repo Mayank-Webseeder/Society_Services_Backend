@@ -9,15 +9,16 @@ const jwt = require("jsonwebtoken");
 exports.signupSociety = async (req, res) => {
 	try {
 		const { username, email, password, buildingName, address, residentsCount } = req.body;
-
-		// 🔐 Check if email already exists
+		if (!username || !email || !password || !buildingName || !address || !residentsCount) {
+			console.log("Missing fields in signupSociety:");
+			return res.status(400).json({ msg: "All fields are required" });
+		}
+		
 		const existing = await Society.findOne({ email });
-		if (existing) return res.status(400).json({ msg: "Society already exists" });
-
-		// 🔐 Check if username already exists
-		const existingUsername = await Society.findOne({ username });
-		if (existingUsername) return res.status(400).json({ msg: "Username already exists" });
-
+		if (existing){
+			console.log("Society already exists with email:", email);
+			return res.status(400).json({ msg: "Society already exists" });
+		}
 		const hashed = await bcrypt.hash(password, 10);
 		const newSociety = new Society({
 			username,
@@ -27,27 +28,31 @@ exports.signupSociety = async (req, res) => {
 			address,
 			residentsCount,
 		});
-		console.log("Saving Society:", newSociety);
+		console.log("Saved Society:", newSociety);
 		await newSociety.save();
-
 		const token = jwt.sign({ id: newSociety._id, role: newSociety.role }, process.env.JWT_SECRET, { expiresIn: "24h" });
-
 		res.status(201).json({ msg: "Society registered successfully", authToken: token });
 	} catch (err) {
+		console.log(err);
 		res.status(500).json({ msg: "Server error", error: err.message });
 	}
 };
 
 exports.loginSociety = async (req, res) => {
   try {
-    const { email, password } = req.body;
+	const { email, password } = req.body;
+	if (!email || !password) {
+		console.log("Missing email or password in loginSociety:");
+	  	return res.status(400).json({ msg: "Email and password are required" });
+	}
+    
     const society = await Society.findOne({ email });
     if (!society) return res.status(400).json({ msg: "Invalid credentials" });
 
     const isMatch = await bcrypt.compare(password, society.password);
     if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
 
-    // 🚫 Check if society is approved by admin
+    
     if (!society.isApproved) {
       return res.status(403).json({
         msg: "Your account is awaiting admin approval. Please try again later.",
@@ -62,6 +67,7 @@ exports.loginSociety = async (req, res) => {
 
     res.json({ token, role: society.role });
   } catch (err) {
+	console.log(err);
     res.status(500).json({ msg: "Server error", error: err.message });
   }
 };
