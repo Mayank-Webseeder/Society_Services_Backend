@@ -243,10 +243,10 @@ exports.createVendorProfile = async (req, res) => {
 			paymentSuccess,
 		} = req.body;
 
-		if (name) updateData.name = name;
+		
 		if (businessName) updateData.businessName = businessName;
 		if (experience) updateData.experience = `${experience} years`;
-		if (contactNumber) updateData.contactNumber = contactNumber;
+		
 		if (location) updateData.location = location;
 		if (address) updateData.address = address;
 		if (email) updateData.email = email;

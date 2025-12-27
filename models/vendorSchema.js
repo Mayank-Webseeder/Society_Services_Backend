@@ -62,9 +62,13 @@ const vendorSchema = new mongoose.Schema(
 
 		
 			
-		idProofFile:{
-        type:String,
-    	required:true
+		idProofFile: {
+			type: String,
+			// required only when profile is marked complete
+			required: function () {
+				return this.isProfileCompleted === true;
+			},
+			default: null,
 		},
 
 		location: {

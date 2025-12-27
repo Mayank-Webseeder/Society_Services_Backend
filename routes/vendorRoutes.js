@@ -97,7 +97,7 @@ try {
 console.log("createVendorProfile:", typeof createVendorProfile);
 
 
-router.put("/createProfile",authenticate,authorizeRoles("vendor"),upload.single("file"),createVendorProfile);
+router.put("/createProfile",authenticate,authorizeRoles("vendor"),upload.single("idProofFile"),createVendorProfile);
 
 router.get("/my-applications",authenticate,authorizeRoles("vendor"),getMyApplications);
 
