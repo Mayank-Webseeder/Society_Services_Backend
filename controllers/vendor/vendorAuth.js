@@ -12,10 +12,10 @@ exports.signupVendor = async (req, res) => {
 		const { name, contactNumber, password } = req.body;
 
 		// Check if the user has verified their contact number
-		const existing = await nonVerified.findOne({ contactNumber }).select("isVerified");
-		if (!existing || !existing.isVerified) {
-			return res.status(400).json({ msg: "First please verify the user" });
-		}
+		// const existing = await nonVerified.findOne({ contactNumber }).select("isVerified");
+		// if (!existing || !existing.isVerified) {
+		// 	return res.status(400).json({ msg: "First please verify the user" });
+		// }
 
 		// Check if a vendor already exists with this contact number
 		const existingVendor = await Vendor.findOne({ contactNumber });
@@ -49,54 +49,54 @@ exports.signupVendor = async (req, res) => {
 
 		// Generate token
 		const token = jwt.sign({ id: newVendor._id, role: newVendor.role }, process.env.JWT_SECRET);
-
-		// Save vendor and remove from notVerified
 		await newVendor.save();
-		await existing.deleteOne();
 
 		res.status(201).json({
 			authToken: token,
 			msg: "Vendor registered successfully.",
 		});
 	} catch (err) {
+		console.log(err);
 		res.status(500).json({ msg: "Server error", error: err.message });
 	}
 };
 
 // ✅ VENDOR LOGIN
-exports.loginVendorUsingEmail = async (req, res) => {
-	try {
-		const { email, password } = req.body;
-		const vendor = await Vendor.find({ email });
+// exports.loginVendorUsingEmail = async (req, res) => {
+// 	try {
+// 		const { email, password } = req.body;
+// 		const vendor = await Vendor.find({ email });
 
-		if (!vendor) return res.status(400).json({ msg: "Invalid credentials" });
-		if (vendor.isBlacklisted) {
-			return res.status(403).json({
-				msg: "Your account has been blacklisted. You cannot log in.",
-				reason: vendor.blacklistReason || "Violation of platform policies",
-				support: "Contact support if you believe this was a mistake.",
-			});
-		}
-		if (!vendor.isApproved) {
-			return res.status(403).json({
-				msg: "Your account is not approved by admin yet. Please wait for verification.",
-			});
-		}
-		const isMatch = await bcrypt.compare(password, vendor.password);
-		if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
-		const token = jwt.sign({ id: vendor._id, role: vendor.role }, process.env.JWT_SECRET);
+// 		if (!vendor) return res.status(400).json({ msg: "Invalid credentials" });
+// 		if (vendor.isBlacklisted) {
+// 			return res.status(403).json({
+// 				msg: "Your account has been blacklisted. You cannot log in.",
+// 				reason: vendor.blacklistReason || "Violation of platform policies",
+// 				support: "Contact support if you believe this was a mistake.",
+// 			});
+// 		}
+// 		if (!vendor.isApproved) {
+// 			return res.status(403).json({
+// 				msg: "Your account is not approved by admin yet. Please wait for verification.",
+// 			});
+// 		}
+// 		const isMatch = await bcrypt.compare(password, vendor.password);
+// 		if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
+// 		const token = jwt.sign({ id: vendor._id, role: vendor.role }, process.env.JWT_SECRET);
 
-		res.json({
-			authToken: token,
-			role: vendor.role,
-			user: {
-				isProfileCompleted: vendor.isProfileCompleted,
-			},
-		});
-	} catch (err) {
-		res.status(500).json({ msg: "Server error", error: err.message });
-	}
-};
+// 		res.json({
+// 			authToken: token,
+// 			role: vendor.role,
+// 			user: {
+// 				isProfileCompleted: vendor.isProfileCompleted,
+// 			},
+// 		});
+// 	} catch (err) {
+// 		res.status(500).json({ msg: "Server error", error: err.message });
+// 	}
+// };
+
+
 exports.loginVendorUsingContact = async (req, res) => {
 	try {
 		const { contactNumber, password } = req.body;
