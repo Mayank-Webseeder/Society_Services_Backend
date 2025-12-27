@@ -62,7 +62,7 @@ const vendorSchema = new mongoose.Schema(
 
 		
 			
-		url:{
+		idProofFile:{
         type:String,
     	required:true
 		},

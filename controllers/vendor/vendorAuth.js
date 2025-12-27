@@ -6,6 +6,11 @@ const Subscription = require("../../models/Subscription");
 const { sendOTP, generate4DigitOtp } = require("../../thirdPartyAPI/nodeMailerSMTP/smtpforTOTP");
 const Services = require("../../models/Services");
 
+
+const cloudinary = require("./cloudinary")
+
+
+
 // ✅ VENDOR SIGNUP
 exports.signupVendor = async (req, res) => {
 	try {
@@ -212,6 +217,20 @@ exports.createVendorProfile = async (req, res) => {
 		const vendorId = req.user.id;
 		const updateData = {};
 
+
+		if (!req.file) {
+      		return res.status(400).json({ message: "No file uploaded" });
+    	}
+
+		const result = await cloudinary.uploader.upload(
+			`data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`,
+			{
+				folder: "vendor-idproofs",
+			}
+			);
+		console.log(result.secure_url);
+
+
 		const {
 			name,
 			businessName,
@@ -231,7 +250,10 @@ exports.createVendorProfile = async (req, res) => {
 		if (location) updateData.location = location;
 		if (address) updateData.address = address;
 		if (email) updateData.email = email;
-		if (req.idProofFile) updateData.idProof = req.idProofFile.path;
+		updateData.idProofFile = result.secure_url;
+		idProofPublicId = result.public_id;
+
+		
 
 		// 🔒 Enforce service validation
 		if (services && services.length > 0) {
@@ -303,6 +325,7 @@ exports.createVendorProfile = async (req, res) => {
 
 			return res.status(201).json({
 				success: true,
+				url: result.secure_url,
 				message: "Vendor profile created successfully with subscription!",
 				subscription: subscriptionData,
 			});
