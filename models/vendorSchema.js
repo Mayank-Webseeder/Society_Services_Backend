@@ -55,10 +55,17 @@ const vendorSchema = new mongoose.Schema(
 
 		// 🔧 Restricting services to predefined roles
 		services: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Services", // Reference to central Services model
-    },],
+    		{
+      			type: mongoose.Schema.Types.ObjectId,
+      			ref: "Services", // Reference to central Services model
+    		},],
+
+		
+			
+		url:{
+        type:String,
+    	required:true
+		},
 
 		location: {
 			GeoLocation: {
