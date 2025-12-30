@@ -226,14 +226,14 @@ exports.createVendorProfile = async (req, res) => {
       vendor.idProofFile = req.idProofFile.url;
     }
 
-    // 🔢 Convert numbers explicitly
-    const latitude = req.body["location.GeoLocation.latitude"]
+// 🔢 Convert numbers explicitly. Use null when not provided to avoid storing 0 as accidental default
+    const latitude = req.body["location.GeoLocation.latitude"] !== undefined && req.body["location.GeoLocation.latitude"] !== ""
       ? Number(req.body["location.GeoLocation.latitude"])
-      : 0;
+      : null;
 
-    const longitude = req.body["location.GeoLocation.longitude"]
+    const longitude = req.body["location.GeoLocation.longitude"] !== undefined && req.body["location.GeoLocation.longitude"] !== ""
       ? Number(req.body["location.GeoLocation.longitude"])
-      : 0;
+      : null;
 
     // 🏠 Assign fields
     vendor.name = req.body.name;
@@ -255,13 +255,21 @@ exports.createVendorProfile = async (req, res) => {
       pincode: req.body["address.pincode"],
     };
 
-    vendor.location = {
-      GeoLocation: {
-        latitude,
-        longitude,
-      },
-      formattedAddress: req.body["location.formattedAddress"],
-    };
+    // Only attach GeoLocation if both latitude and longitude are provided
+    const newLocation = {};
+    if (latitude != null && longitude != null) {
+      newLocation.GeoLocation = { latitude, longitude };
+    }
+    if (req.body["location.formattedAddress"]) {
+      newLocation.formattedAddress = req.body["location.formattedAddress"];
+    }
+    // If location already has some top-level latitude/longitude fields (legacy), preserve them
+    if (req.body["location.latitude"] !== undefined && req.body["location.longitude"] !== undefined) {
+      newLocation.latitude = Number(req.body["location.latitude"]);
+      newLocation.longitude = Number(req.body["location.longitude"]);
+    }
+
+    vendor.location = newLocation;
 
     // Ensure required fields for completed profile are present
     if (!vendor.idProofFile) {

@@ -87,32 +87,93 @@ exports.getNearbyJobs = async (req, res) => {
     const vendor = await Vendor.findById(vendorId).select("location");
 
 
-    // Allow fallback: if vendor is not found or has no location, accept lat/lon from query
-    const fallbackLat = req.query.latitude || req.query.lat;
-    const fallbackLon = req.query.longitude || req.query.lon;
-
+    // We must fetch vendor coordinates from the DB only (no URL fallback)
     if (!vendor) {
-      if (fallbackLat && fallbackLon) {
-        console.warn("Vendor not found; using lat/lon from query");
-      } else {
-        console.log("Vendor not found for id:", vendorId);
-        return res.status(404).json({ msg: "Vendor not found. Check your auth token." });
-      }
+      console.log("Vendor not found for id:", vendorId);
+      return res.status(404).json({ msg: "Vendor not found. Check your auth token." });
     }
 
     let lat = null;
     let lon = null;
 
-    if (vendor && vendor.location?.GeoLocation && vendor.location.GeoLocation.latitude != null && vendor.location.GeoLocation.longitude != null) {
-      lat = Number(vendor.location.GeoLocation.latitude);
-      lon = Number(vendor.location.GeoLocation.longitude);
-    } else if (fallbackLat && fallbackLon) {
-      lat = Number(fallbackLat);
-      lon = Number(fallbackLon);
-    } else {
-      console.log("Vendor location missing:", vendor);
+    // Try multiple vendor location shapes used across the app (support backward compatibility)
+    if (vendor.location) {
+      // Diagnostic logs to inspect raw stored values
+      console.debug("vendor.location raw:", vendor.location);
+      try {
+        console.debug("vendor.location keys:", Object.keys(vendor.location));
+        console.debug("vendor.location types:", {
+          latType: typeof vendor.location.latitude,
+          lonType: typeof vendor.location.longitude,
+          geoLatType: typeof vendor.location.GeoLocation?.latitude,
+          geoLonType: typeof vendor.location.GeoLocation?.longitude,
+        });
+      } catch (e) {
+        console.debug("vendor.location inspect error:", e.message);
+      }
+
+      const candidates = [];
+
+      // Top-level latitude/longitude (legacy) - attempt to read from raw DB doc if undefined on Mongoose doc
+      let topLat = vendor.location.latitude;
+      let topLon = vendor.location.longitude;
+      if ((topLat === undefined || topLon === undefined) && vendor._id) {
+        try {
+          const raw = await Vendor.collection.findOne({ _id: vendor._id }, { projection: { 'location.latitude': 1, 'location.longitude': 1 } });
+          if (raw && raw.location) {
+            topLat = raw.location.latitude;
+            topLon = raw.location.longitude;
+            console.debug('vendor.location raw-from-db:', { topLat, topLon });
+          }
+        } catch (err) {
+          console.warn('Failed to fetch raw vendor.location from collection:', err.message);
+        }
+      }
+
+      if (topLat != null && topLon != null) {
+        const parsedLat = Number(topLat);
+        const parsedLon = Number(topLon);
+        console.debug("vendor.location top-level parsed:", { parsedLat, parsedLon, rawLat: topLat, rawLon: topLon });
+        candidates.push({ parsedLat, parsedLon, source: "top" });
+      }
+
+      // GeoLocation shape
+      if (vendor.location.GeoLocation && vendor.location.GeoLocation.latitude != null && vendor.location.GeoLocation.longitude != null) {
+        const parsedLat = Number(vendor.location.GeoLocation.latitude);
+        const parsedLon = Number(vendor.location.GeoLocation.longitude);
+        console.debug("vendor.location.GeoLocation parsed:", { parsedLat, parsedLon, rawLat: vendor.location.GeoLocation.latitude, rawLon: vendor.location.GeoLocation.longitude });
+        candidates.push({ parsedLat, parsedLon, source: "geo" });
+      }
+
+      // Choose candidate: prefer top-level non-zero coords, then geo non-zero, then any numeric
+      console.debug("vendor.location candidates:", candidates);
+      const preferOrder = ["top", "geo"];
+      let chosen = null;
+      for (const pref of preferOrder) {
+        const c = candidates.find((x) => x.source === pref && !isNaN(x.parsedLat) && !isNaN(x.parsedLon) && x.parsedLat !== 0 && x.parsedLon !== 0);
+        if (c) {
+          chosen = c;
+          break;
+        }
+      }
+      if (!chosen) {
+        const c = candidates.find((x) => !isNaN(x.parsedLat) && !isNaN(x.parsedLon));
+        if (c) chosen = c;
+      }
+
+      if (chosen) {
+        lat = chosen.parsedLat;
+        lon = chosen.parsedLon;
+        console.log(`Using ${chosen.source} coords for vendor: lat=${lat}, lon=${lon}`);
+      } else {
+        console.debug("No usable vendor.coords chosen from candidates");
+      }
+    }
+
+    if (lat == null || lon == null) {
+      console.log("Vendor location missing or incomplete (zero/undefined):", vendor);
       return res.status(400).json({
-        msg: "Vendor location not set. Please update your location or provide latitude & longitude in query params.",
+        msg: "Vendor location not set. Please update your profile with valid latitude & longitude.",
       });
     }
 
@@ -120,8 +181,7 @@ exports.getNearbyJobs = async (req, res) => {
       return res.status(400).json({ msg: "Invalid vendor coordinates" });
     }
 
-    // Max distance (in meters) for nearby search. Can be overridden via ?maxDistance=<meters>
-    const MAX_DISTANCE = Number(req.query.maxDistance) || 20000;
+    // Max distance is defined below and used for geo queries
 
     // 2️⃣ Use $geoNear aggregation to get accurate distances for jobs with geo
     const match = {
@@ -131,7 +191,11 @@ exports.getNearbyJobs = async (req, res) => {
     if (quotationRequired === "true") match.quotationRequired = true;
     if (quotationRequired === "false") match.quotationRequired = false;
 
+    const MAX_DISTANCE = Number(req.query.maxDistance) || 20000;
+
     let jobs = [];
+
+    console.log(`getNearbyJobs: vendor coords lat=${lat}, lon=${lon}, maxDistance=${MAX_DISTANCE}`);
 
     try {
       const pipeline = [
@@ -139,7 +203,7 @@ exports.getNearbyJobs = async (req, res) => {
           $geoNear: {
             near: { type: "Point", coordinates: [lon, lat] }, // longitude, latitude
             distanceField: "distance",
-            maxDistance: 20000, // meters
+            maxDistance: MAX_DISTANCE, // meters
             spherical: true,
             query: match,
           },
@@ -182,9 +246,19 @@ exports.getNearbyJobs = async (req, res) => {
       ];
 
       jobs = await Job.aggregate(pipeline);
+      console.log(`getNearbyJobs: $geoNear returned ${jobs.length} job(s)`);
     } catch (err) {
-      console.warn("$geoNear aggregation failed:", err.message);
+      console.warn("getNearbyJobs $geoNear failed:", err.message);
       jobs = [];
+    }
+
+    // Diagnostic counts
+    try {
+      const geoCount = await Job.countDocuments({ 'geo.coordinates.0': { $exists: true } });
+      const locCount = await Job.countDocuments({ 'location.latitude': { $exists: true } });
+      console.log(`getNearbyJobs: docs with geo.coordinates: ${geoCount}, docs with location lat/lon: ${locCount}`);
+    } catch (err) {
+      console.warn("getNearbyJobs diagnostic counts failed:", err.message);
     }
 
     // 3️⃣ Fallback: include jobs without geo (older docs) by computing haversine on location fields
