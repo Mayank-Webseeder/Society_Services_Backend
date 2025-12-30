@@ -20,6 +20,8 @@ router.get("/nearby", authMiddleware, authorizeRoles("vendor"), getNearbyJobs);
 
 router.get("/job/:id", authMiddleware, getJobById);
 
+router.get("/new-leads", authMiddleware, authorizeRoles("vendor"), getNearbyJobs);
+
 router.get("/filter", authMiddleware, filterJobsByTypeAndDate);
 
 router.post("/expire-old", expireOldJobs);

@@ -6,149 +6,200 @@ const Society = require("../models/SocietySchema");
 
 // 1. Society Creates a Job
 exports.createJob = async (req, res) => {
-	try {
-		if (req.user.role !== "society") {
-			return res.status(403).json({
-				success: false,
-				msg: "Not authorized. Only societies can post jobs.",
-			});
-		}
-		const {
-			title,
-			type,
-			requiredExperience,
-			details,
-			contactNumber,
-			location,
-			offeredPrice,
-			scheduledFor,
-			quotationRequired,
-		} = req.body;
+  try {
+    if (req.user.role !== "society") {
+      return res.status(403).json({
+        success: false,
+        msg: "Not authorized. Only societies can post jobs.",
+      });
+    }
 
-		const { latitude, longitude, googleMapLink } = location;
+    const {
+      title,
+      type,
+      requiredExperience,
+      details,
+      contactNumber,
+      location,
+      offeredPrice,
+      scheduledFor,
+      quotationRequired,
+    } = req.body;
 
-		const newJob = new Job({
-			society: req.user.id,
-			title,
-			type,
-			requiredExperience,
-			details,
-			contactNumber,
-			location: {
-				latitude,
-				longitude,
-				googleMapLink,
-			},
-			geo: {
-				type: "Point",
-				coordinates: [parseFloat(longitude), parseFloat(latitude)],
-			},
-			offeredPrice: offeredPrice,
-			scheduledFor,
-			quotationRequired: quotationRequired || false,
-			isActive: true,
-		});
+    if (!location?.latitude || !location?.longitude) {
+      return res.status(400).json({
+        msg: "Location latitude and longitude are required",
+      });
+    }
 
-		await newJob.save();
-		res.status(201).json({
-			msg: "Job posted successfully",
-			job: {
-				...newJob.toObject(),
-				status: "New",
-			},
-		});
-	} catch (err) {
-		console.log(err)
-		res.status(500).json({ msg: "Failed to post job", error: err.message });
-	}
+    const latitude = parseFloat(location.latitude);
+    const longitude = parseFloat(location.longitude);
+
+    const newJob = new Job({
+      society: req.user.id,
+      title,
+      type,
+      requiredExperience,
+      details,
+      contactNumber,
+
+      location: {
+        latitude,
+        longitude,
+        googleMapLink: `https://maps.google.com/?q=${latitude},${longitude}`,
+      },
+
+      // 🔥 REQUIRED for nearby search
+      geo: {
+        type: "Point",
+        coordinates: [longitude, latitude], // longitude FIRST
+      },
+
+      offeredPrice,
+      scheduledFor,
+      quotationRequired: quotationRequired || false,
+      isActive: true,
+    });
+
+    await newJob.save();
+
+    res.status(201).json({
+      msg: "Job posted successfully",
+      job: newJob,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      msg: "Failed to post job",
+      error: err.message,
+    });
+  }
 };
+
 
 // 2. Vendor: Get Jobs Nearby (with application status)
 exports.getNearbyJobs = async (req, res) => {
-	try {
-		const { quotationRequired } = req.query;
-		const vendorId = req.user.id;
+  try {
+    const { quotationRequired } = req.query;
+    const vendorId = req.user.id;
 
-		// 1️⃣ Get vendor location
-		const vendor = await Vendor.findById(vendorId).select("location");
-		if (!vendor || !vendor.location?.GeoLocation?.latitude || !vendor.location?.GeoLocation?.longitude) {
-			return res.status(400).json({ msg: "Vendor location not set in database" });
-		}
-		const lon = parseFloat(vendor.location.GeoLocation.longitude);
-		const lat = parseFloat(vendor.location.GeoLocation.latitude);
+    // 1️⃣ Fetch vendor location
+    const vendor = await Vendor.findById(vendorId).select("location");
 
-		// 2️⃣ Base filter
-		const filter = {
-			geo: {
-				$near: {
-					$geometry: { type: "Point", coordinates: [lon, lat] },
-					$maxDistance: 20000, // 20 km
-				},
-			},
-			isActive: true,
-			status: { $ne: "Expired" },
-		};
+    if (
+      !vendor ||
+      !vendor.location?.GeoLocation ||
+      vendor.location.GeoLocation.latitude == null ||
+      vendor.location.GeoLocation.longitude == null
+    ) {
+      console.log("Vendor location missing:", vendor);
+      return res.status(400).json({
+        msg: "Vendor location not set. Please update your location.",
+      });
+    }
 
-		if (quotationRequired === "true") filter.quotationRequired = true;
-		else if (quotationRequired === "false") filter.quotationRequired = false;
+    const lat = Number(vendor.location.GeoLocation.latitude);
+    const lon = Number(vendor.location.GeoLocation.longitude);
 
-		// 3️⃣ Fetch jobs + populate society
-		const jobs = await Job.find(filter)
-			.populate("society", "username email buildingName address residentsCount") // only needed fields
-			.lean();
+    if (isNaN(lat) || isNaN(lon)) {
+      return res.status(400).json({ msg: "Invalid vendor coordinates" });
+    }
 
-		const jobIds = jobs.map((job) => job._id);
+    // 2️⃣ Base geo filter
+    const filter = {
+      geo: {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [lon, lat], // ⚠️ longitude first
+          },
+          $maxDistance: 20000, // 20 KM
+        },
+      },
+      isActive: true,
+      status: { $ne: "Expired" },
+    };
 
-		// 4️⃣ Fetch vendor's existing applications
-		const vendorApplications = await Application.find({
-			vendor: vendorId,
-			job: { $in: jobIds },
-		}).select("job status applicationType");
+    if (quotationRequired === "true") filter.quotationRequired = true;
+    if (quotationRequired === "false") filter.quotationRequired = false;
 
-		const statusMap = {};
-		vendorApplications.forEach((app) => {
-			statusMap[app.job.toString()] = {
-				status: app.status,
-				type: app.applicationType,
-			};
-		});
+    // 3️⃣ Fetch jobs
+    const jobs = await Job.find(filter)
+      .populate(
+        "society",
+        "societyname email contact address city residentsCount"
+      )
+      .lean();
 
-		// 5️⃣ Final formatted jobs
-		const formattedJobs = jobs.map((job) => ({
-			_id: job._id,
-			title: job.title,
-			type: job.type,
-			requiredExperience: job.requiredExperience,
-			details: job.details,
-			contactNumber: job.contactNumber,
-			location: job.location,
-			offeredPricing: job.offeredPrice,
-			quotationRequired: job.quotationRequired,
-			scheduledFor: job.scheduledFor,
-			status: job.status,
-			completedAt: job.completedAt
-				? new Date(job.completedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
-				: null,
-			applicationStatus: statusMap[job._id.toString()] || null,
-			postedAt: new Date(job.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
-			society: job.society
-				? {
-						_id: job.society._id,
-						username: job.society.username,
-						email: job.society.email,
-						buildingName: job.society.buildingName,
-						address: job.society.address,
-						residentsCount: job.society.residentsCount,
-				  }
-				: null,
-		}));
+    if (!jobs.length) {
+      return res.json([]);
+    }
 
-		res.json(formattedJobs);
-	} catch (err) {
-		console.error("Error in getNearbyJobs:", err);
-		res.status(500).json({ msg: "Error fetching nearby jobs", error: err.message });
-	}
+    const jobIds = jobs.map((job) => job._id);
+
+    // 4️⃣ Vendor applications
+    const vendorApplications = await Application.find({
+      vendor: vendorId,
+      job: { $in: jobIds },
+    }).select("job status applicationType");
+
+    const statusMap = {};
+    vendorApplications.forEach((app) => {
+      statusMap[app.job.toString()] = {
+        status: app.status,
+        type: app.applicationType,
+      };
+    });
+
+    // 5️⃣ Format response
+    const formattedJobs = jobs.map((job) => ({
+      _id: job._id,
+      title: job.title,
+      type: job.type,
+      requiredExperience: job.requiredExperience,
+      details: job.details,
+      contactNumber: job.contactNumber,
+      location: job.location,
+      offeredPrice: job.offeredPrice,
+      quotationRequired: job.quotationRequired,
+      scheduledFor: job.scheduledFor,
+      status: job.status,
+
+      completedAt: job.completedAt
+        ? new Date(job.completedAt).toLocaleString("en-IN", {
+            timeZone: "Asia/Kolkata",
+          })
+        : null,
+
+      applicationStatus: statusMap[job._id.toString()] || null,
+
+      postedAt: new Date(job.createdAt).toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+      }),
+
+      society: job.society
+        ? {
+            _id: job.society._id,
+            societyname: job.society.societyname,
+            email: job.society.email,
+            contact: job.society.contact,
+            address: job.society.address,
+            city: job.society.city,
+            residentsCount: job.society.residentsCount,
+          }
+        : null,
+    }));
+
+    res.json(formattedJobs);
+  } catch (err) {
+    console.error("Error in getNearbyJobs:", err);
+    res.status(500).json({
+      msg: "Error fetching nearby jobs",
+      error: err.message,
+    });
+  }
 };
+
 
 //68e4ad9208f45e6db1ee7a46
 

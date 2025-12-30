@@ -15,7 +15,7 @@ const societySchema = new mongoose.Schema(
 		pincode: { type: String, required: true },
 		residentsCount: { type: Number, default: 0 },
 		location: {
-			lonngitude: { type: Number },
+			longitude: { type: Number },
 			latitude: { type: Number },
 			default: { type: String, default: "Not provided" },
 			googleMapLink: { type: String, default: "Not provided" },
