@@ -12,9 +12,12 @@ exports.applyToJob = async (req, res) => {
 		const job = await Job.findById(jobId);
 		if (!job) return res.status(404).json({ msg: "Job not found" });
 		const subscription = await Subscription.findOne({ vendor: req.user.id, isActive: true });
-		if (!subscription) {
-			return res.status(403).json({ msg: "Active subscription required to apply for jobs." });
-		}
+
+		//subscription vala bad ma add kar dena
+		
+		// if (!subscription) {
+		// 	return res.status(403).json({ msg: "Active subscription required to apply for jobs." });
+		// }
 		// ✅ Prevent applying if job is already completed
 		if (job.status === "Completed") {
 			return res.status(400).json({ msg: "Cannot apply. This job is already completed." });

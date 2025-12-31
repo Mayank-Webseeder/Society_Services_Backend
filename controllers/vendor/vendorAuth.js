@@ -7,7 +7,8 @@ const { sendOTP, generate4DigitOtp } = require("../../thirdPartyAPI/nodeMailerSM
 const Services = require("../../models/Services");
 
 
-const cloudinary = require("./cloudinary")
+const cloudinary = require("./cloudinary");
+const { log } = require("console");
 
 
 
@@ -103,6 +104,7 @@ exports.signupVendor = async (req, res) => {
 
 
 exports.loginVendorUsingContact = async (req, res) => {
+		console.log('loginVendorUsingContact called', { path: req.path, method: req.method });
 	try {
 		const { contactNumber, password } = req.body;
 		const vendor = await Vendor.findOne({ contactNumber });
@@ -135,6 +137,7 @@ exports.loginVendorUsingContact = async (req, res) => {
 			},
 		});
 	} catch (err) {
+		console.log(err);
 		res.status(500).json({ msg: "Server error", error: err.message });
 	}
 };

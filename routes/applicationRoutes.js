@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const upload=require("../controllers/vendor/multer")
 const {
   applyToJob,
   showInterestInJob,
@@ -76,7 +77,7 @@ router.post("/:id/interest", authMiddleware, authorizeRoles("vendor"), showInter
  *       401:
  *         description: Unauthorized
  */
-router.post("/:id/apply", authMiddleware, authorizeRoles("vendor"),uploadQuotedPdf,applyToJob);
+router.post("/:id/apply", authMiddleware, authorizeRoles("vendor"),upload.single("quotedpdf"),uploadQuotedPdf,applyToJob);
 
 /**
  * @swagger
