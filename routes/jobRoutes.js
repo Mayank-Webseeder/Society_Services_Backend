@@ -7,7 +7,8 @@ const {
   getMyPostedJobs,
   filterJobsByTypeAndDate,
   expireOldJobs,
-  deleteJob
+  deleteJob,
+  getNearbyJobsDebug
 } = require("../controllers/jobController");
 
 const { authMiddleware } = require("../middleware/authMiddleware");
@@ -18,7 +19,12 @@ router.post("/create", authMiddleware, authorizeRoles("society"), createJob);
 
 router.get("/nearby", authMiddleware, authorizeRoles("vendor"), getNearbyJobs);
 
+
+router.get("/nearby-debug", authMiddleware, authorizeRoles("vendor"), getNearbyJobsDebug);
+
 router.get("/job/:id", authMiddleware, getJobById);
+
+router.get("/new-leads", authMiddleware, authorizeRoles("vendor"), getNearbyJobs);
 
 router.get("/filter", authMiddleware, filterJobsByTypeAndDate);
 

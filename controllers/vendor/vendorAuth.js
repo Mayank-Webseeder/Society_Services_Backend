@@ -6,16 +6,22 @@ const Subscription = require("../../models/Subscription");
 const { sendOTP, generate4DigitOtp } = require("../../thirdPartyAPI/nodeMailerSMTP/smtpforTOTP");
 const Services = require("../../models/Services");
 
+
+const cloudinary = require("./cloudinary");
+const { log } = require("console");
+
+
+
 // ✅ VENDOR SIGNUP
 exports.signupVendor = async (req, res) => {
 	try {
 		const { name, contactNumber, password } = req.body;
 
 		// Check if the user has verified their contact number
-		const existing = await nonVerified.findOne({ contactNumber }).select("isVerified");
-		if (!existing || !existing.isVerified) {
-			return res.status(400).json({ msg: "First please verify the user" });
-		}
+		// const existing = await nonVerified.findOne({ contactNumber }).select("isVerified");
+		// if (!existing || !existing.isVerified) {
+		// 	return res.status(400).json({ msg: "First please verify the user" });
+		// }
 
 		// Check if a vendor already exists with this contact number
 		const existingVendor = await Vendor.findOne({ contactNumber });
@@ -49,55 +55,56 @@ exports.signupVendor = async (req, res) => {
 
 		// Generate token
 		const token = jwt.sign({ id: newVendor._id, role: newVendor.role }, process.env.JWT_SECRET);
-
-		// Save vendor and remove from notVerified
 		await newVendor.save();
-		await existing.deleteOne();
 
 		res.status(201).json({
 			authToken: token,
 			msg: "Vendor registered successfully.",
 		});
 	} catch (err) {
+		console.log(err);
 		res.status(500).json({ msg: "Server error", error: err.message });
 	}
 };
 
 // ✅ VENDOR LOGIN
-exports.loginVendorUsingEmail = async (req, res) => {
-	try {
-		const { email, password } = req.body;
-		const vendor = await Vendor.find({ email });
+// exports.loginVendorUsingEmail = async (req, res) => {
+// 	try {
+// 		const { email, password } = req.body;
+// 		const vendor = await Vendor.find({ email });
 
-		if (!vendor) return res.status(400).json({ msg: "Invalid credentials" });
-		if (vendor.isBlacklisted) {
-			return res.status(403).json({
-				msg: "Your account has been blacklisted. You cannot log in.",
-				reason: vendor.blacklistReason || "Violation of platform policies",
-				support: "Contact support if you believe this was a mistake.",
-			});
-		}
-		if (!vendor.isApproved) {
-			return res.status(403).json({
-				msg: "Your account is not approved by admin yet. Please wait for verification.",
-			});
-		}
-		const isMatch = await bcrypt.compare(password, vendor.password);
-		if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
-		const token = jwt.sign({ id: vendor._id, role: vendor.role }, process.env.JWT_SECRET);
+// 		if (!vendor) return res.status(400).json({ msg: "Invalid credentials" });
+// 		if (vendor.isBlacklisted) {
+// 			return res.status(403).json({
+// 				msg: "Your account has been blacklisted. You cannot log in.",
+// 				reason: vendor.blacklistReason || "Violation of platform policies",
+// 				support: "Contact support if you believe this was a mistake.",
+// 			});
+// 		}
+// 		if (!vendor.isApproved) {
+// 			return res.status(403).json({
+// 				msg: "Your account is not approved by admin yet. Please wait for verification.",
+// 			});
+// 		}
+// 		const isMatch = await bcrypt.compare(password, vendor.password);
+// 		if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
+// 		const token = jwt.sign({ id: vendor._id, role: vendor.role }, process.env.JWT_SECRET);
 
-		res.json({
-			authToken: token,
-			role: vendor.role,
-			user: {
-				isProfileCompleted: vendor.isProfileCompleted,
-			},
-		});
-	} catch (err) {
-		res.status(500).json({ msg: "Server error", error: err.message });
-	}
-};
+// 		res.json({
+// 			authToken: token,
+// 			role: vendor.role,
+// 			user: {
+// 				isProfileCompleted: vendor.isProfileCompleted,
+// 			},
+// 		});
+// 	} catch (err) {
+// 		res.status(500).json({ msg: "Server error", error: err.message });
+// 	}
+// };
+
+
 exports.loginVendorUsingContact = async (req, res) => {
+		console.log('loginVendorUsingContact called', { path: req.path, method: req.method });
 	try {
 		const { contactNumber, password } = req.body;
 		const vendor = await Vendor.findOne({ contactNumber });
@@ -130,6 +137,7 @@ exports.loginVendorUsingContact = async (req, res) => {
 			},
 		});
 	} catch (err) {
+		console.log(err);
 		res.status(500).json({ msg: "Server error", error: err.message });
 	}
 };
@@ -208,120 +216,85 @@ exports.validateContactNumber = async (req, res) => {
 // ✅ CREATE VENDOR PROFILE
 
 exports.createVendorProfile = async (req, res) => {
-	try {
-		const vendorId = req.user.id;
-		const updateData = {};
+  try {
+    const vendorId = req.user.id;
 
-		const {
-			name,
-			businessName,
-			experience,
-			contactNumber,
-			location,
-			address,
-			email,
-			services, // Array of service IDs (must exist in Services model)
-			paymentSuccess,
-		} = req.body;
+    const vendor = await Vendor.findById(vendorId);
+    if (!vendor) {
+      return res.status(404).json({ msg: "Vendor not found" });
+    }
 
-		if (name) updateData.name = name;
-		if (businessName) updateData.businessName = businessName;
-		if (experience) updateData.experience = `${experience} years`;
-		if (contactNumber) updateData.contactNumber = contactNumber;
-		if (location) updateData.location = location;
-		if (address) updateData.address = address;
-		if (email) updateData.email = email;
-		if (req.idProofFile) updateData.idProof = req.idProofFile.path;
+    // 📸 Image - upload middleware attaches cloudinary result to req.idProofFile
+    if (req.idProofFile && req.idProofFile.url) {
+      vendor.idProofFile = req.idProofFile.url;
+    }
 
-		// 🔒 Enforce service validation
-		if (services && services.length > 0) {
-			const inputServiceIds = Array.isArray(services) ? services : [services];
+// 🔢 Convert numbers explicitly. Use null when not provided to avoid storing 0 as accidental default
+    const latitude = req.body["location.GeoLocation.latitude"] !== undefined && req.body["location.GeoLocation.latitude"] !== ""
+      ? Number(req.body["location.GeoLocation.latitude"])
+      : null;
 
-			// Find only valid services (admin-created & active)
-			const validServices = await Services.find({
-				_id: { $in: inputServiceIds },
-				isActive: true,
-			});
+    const longitude = req.body["location.GeoLocation.longitude"] !== undefined && req.body["location.GeoLocation.longitude"] !== ""
+      ? Number(req.body["location.GeoLocation.longitude"])
+      : null;
 
-			// ❌ If any invalid service ID is passed, reject the entire request
-			if (validServices.length !== inputServiceIds.length) {
-				const invalidIds = inputServiceIds.filter((id) => !validServices.map((s) => s._id.toString()).includes(id));
-				return res.status(400).json({
-					success: false,
-					msg: "Invalid or inactive services detected.",
-					invalidServices: invalidIds,
-				});
-			}
+    // 🏠 Assign fields
+    vendor.name = req.body.name;
+    vendor.businessName = req.body.businessName;
+    vendor.experience = req.body.experience;
+    vendor.contactNumber = req.body.contactNumber;
 
-			// Merge vendor’s current services with valid ones (prevent duplicates)
-			updateData.services = validServices.map((s) => s._id.toString());
-		}
+    // Preserve uploaded file path; only set from body when explicitly provided
+    if (req.body.idProofFile) {
+      vendor.idProofFile = req.body.idProofFile;
+    }
 
-		// ✅ Mark profile as complete
-		updateData.isProfileCompleted = true;
+    vendor.address = {
+      buildingNumber: req.body["address.buildingNumber"],
+      locality: req.body["address.locality"],
+      landmark: req.body["address.landmark"],
+      city: req.body["address.city"],
+      state: req.body["address.state"],
+      pincode: req.body["address.pincode"],
+    };
 
-		const updatedVendor = await Vendor.findByIdAndUpdate(vendorId, updateData, {
-			new: true,
-			runValidators: true,
-		}).populate("services", "name price isActive");
+    // Only attach GeoLocation if both latitude and longitude are provided
+    const newLocation = {};
+    if (latitude != null && longitude != null) {
+      newLocation.GeoLocation = { latitude, longitude };
+    }
+    if (req.body["location.formattedAddress"]) {
+      newLocation.formattedAddress = req.body["location.formattedAddress"];
+    }
+    // If location already has some top-level latitude/longitude fields (legacy), preserve them
+    if (req.body["location.latitude"] !== undefined && req.body["location.longitude"] !== undefined) {
+      newLocation.latitude = Number(req.body["location.latitude"]);
+      newLocation.longitude = Number(req.body["location.longitude"]);
+    }
 
-		if (!updatedVendor) {
-			return res.status(404).json({ success: false, message: "Vendor not found" });
-		}
+    vendor.location = newLocation;
 
-		// 💳 If payment is successful, create a subscription
-		let subscriptionData = null;
-		if (paymentSuccess === true || paymentSuccess === "true") {
-			const activeServices = updatedVendor.services.filter((s) => s.isActive);
-			const totalPrice = activeServices.reduce((sum, s) => sum + s.price, 0);
+    // Ensure required fields for completed profile are present
+    if (!vendor.idProofFile) {
+      return res.status(400).json({ success: false, msg: "ID proof file is required to complete profile" });
+    }
 
-			const startDate = new Date();
-			const endDate = new Date(startDate);
-			endDate.setFullYear(endDate.getFullYear() + 1);
+    vendor.isProfileCompleted = true;
 
-			subscriptionData = await Subscription.create({
-				vendor: updatedVendor._id,
-				vendorName: updatedVendor.name,
-				planPrice: totalPrice,
-				startDate,
-				endDate,
-				paymentStatus: "Paid",
-				subscriptionStatus: "Active",
-				isActive: true,
-				services: activeServices.map((s) => ({
-					service: s._id,
-					name: s.name,
-					proratedPrice: s.price,
-				})),
-			});
+    await vendor.save();
 
-			updatedVendor.subscription = {
-				isActive: true,
-				expiresAt: subscriptionData.endDate,
-			};
-			await updatedVendor.save();
+    res.json({
+      success: true,
+      msg: "Vendor profile completed successfully",
+      vendor,
+    });
 
-			return res.status(201).json({
-				success: true,
-				message: "Vendor profile created successfully with subscription!",
-				subscription: subscriptionData,
-			});
-		}
-
-		res.status(201).json({
-			success: true,
-			message: "Vendor profile created successfully!",
-			vendor: updatedVendor,
-		});
-	} catch (error) {
-		console.error("❌ Error creating vendor profile:", error);
-		res.status(500).json({
-			success: false,
-			message: "Internal server error",
-			error: error.message,
-		});
-	}
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Profile update failed", error: err.message });
+  }
 };
+
 
 // ✅ FORGOT PASSWORD
 exports.forgetPassword = async (req, res) => {

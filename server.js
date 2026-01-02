@@ -80,8 +80,18 @@ app.use("/api/jobs", jobRoutes); // e.g. POST /api/jobs/create, GET /api/jobs/ne
 app.use("/api/applications", applicationRoutes); // e.g. POST /api/applications/:id/apply
 // ✅ MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
-	.then(() => {
+.then(async () => {
 		console.log("✅ MongoDB connected");
+
+		// Ensure geo index exists for Job model
+		try {
+			const Job = require("./models/Job");
+			await Job.createIndexes();
+			console.log("✅ Job indexes ensured");
+		} catch (err) {
+			console.warn("Could not ensure Job indexes:", err.message);
+		}
+
 		app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
 
 	})

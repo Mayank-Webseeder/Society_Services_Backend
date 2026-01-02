@@ -8,8 +8,8 @@ const jwt = require("jsonwebtoken");
 
 exports.signupSociety = async (req, res) => {
 	try {
-		const { societyname,contact, email, password, address, city, pincode, residentsCount } = req.body;
-		if (!societyname || !contact || !email || !password || !address || !city || !pincode || !residentsCount) {
+		const { societyname,contact, email, password, address, city, pincode, location,residentsCount } = req.body;
+		if (!societyname || !contact || !email || !password || !address || !city || !pincode || !location || !residentsCount) {
 			console.log("Missing fields in signupSociety:");
 			return res.status(400).json({ msg: "All fields are required" });
 		}
@@ -28,6 +28,7 @@ exports.signupSociety = async (req, res) => {
 			address,
 			city,
 			pincode,
+			location,
 			residentsCount,
 		});
 		console.log("Saved Society:", newSociety);
