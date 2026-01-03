@@ -1,16 +1,40 @@
 const express = require("express");
 const router = express.Router();
+const upload=require("../controllers/vendor/multer")
 const {
   applyToJob,
   showInterestInJob,
   getJobApplicants,
   approveApplication,
-  getVendorApplicationType
+  getVendorApplicationType,
+  debugListApplicationsForJob,
+  debugListOrphanApplications,
 } = require("../controllers/applicationController");
 
 const { authMiddleware } = require("../middleware/authMiddleware");
 const uploadQuotedPdf = require("../middleware/uploadQuotedPDF");
 const { authorizeRoles } = require("../middleware/roleBasedAuth");
+
+
+//appty to job without quotation
+router.post("/:id/interest", authMiddleware, authorizeRoles("vendor"), showInterestInJob);
+
+
+//apply to job with quotation
+router.post("/:id/apply", authMiddleware, authorizeRoles("vendor"),upload.single("quotedpdf"),uploadQuotedPdf,applyToJob);
+
+router.get("/:id/applicants", authMiddleware, authorizeRoles("society"),getJobApplicants);
+
+// Dev-only debug helpers (only enabled non-production via controller checks)
+router.get("/debug/job/:jobId", authMiddleware, debugListApplicationsForJob);
+router.get("/debug/orphans", authMiddleware, debugListOrphanApplications);
+
+router.post("/:applicationId/approve", authMiddleware, authorizeRoles("society"),approveApplication);
+
+router.get("/:jobId/vendor/:vendorId", authMiddleware, authorizeRoles("society"),getVendorApplicationType);
+
+module.exports = router;
+
 
 /**
  * @swagger
@@ -40,7 +64,7 @@ const { authorizeRoles } = require("../middleware/roleBasedAuth");
  *       401:
  *         description: Unauthorized
  */
-router.post("/:id/interest", authMiddleware, authorizeRoles("vendor"), showInterestInJob);
+//router.post("/:id/interest", authMiddleware, authorizeRoles("vendor"), showInterestInJob);
 
 /**
  * @swagger
@@ -76,7 +100,7 @@ router.post("/:id/interest", authMiddleware, authorizeRoles("vendor"), showInter
  *       401:
  *         description: Unauthorized
  */
-router.post("/:id/apply", authMiddleware, authorizeRoles("vendor"),uploadQuotedPdf,applyToJob);
+//router.post("/:id/apply", authMiddleware, authorizeRoles("vendor"),upload.single("quotedpdf"),uploadQuotedPdf,applyToJob);
 
 /**
  * @swagger
@@ -99,7 +123,7 @@ router.post("/:id/apply", authMiddleware, authorizeRoles("vendor"),uploadQuotedP
  *       401:
  *         description: Unauthorized
  */
-router.get("/:id/applicants", authMiddleware, authorizeRoles("society"),getJobApplicants);
+//router.get("/:id/applicants", authMiddleware, authorizeRoles("society"),getJobApplicants);
 
 /**
  * @swagger
@@ -122,7 +146,7 @@ router.get("/:id/applicants", authMiddleware, authorizeRoles("society"),getJobAp
  *       401:
  *         description: Unauthorized
  */
-router.post("/:applicationId/approve", authMiddleware, authorizeRoles("society"),approveApplication);
+//router.post("/:applicationId/approve", authMiddleware, authorizeRoles("society"),approveApplication);
 
 /**
  * @swagger
@@ -174,6 +198,6 @@ router.post("/:applicationId/approve", authMiddleware, authorizeRoles("society")
  *       401:
  *         description: Unauthorized
  */
-router.get("/:jobId/vendor/:vendorId", authMiddleware, authorizeRoles("society"),getVendorApplicationType);
+// router.get("/:jobId/vendor/:vendorId", authMiddleware, authorizeRoles("society"),getVendorApplicationType);
 
-module.exports = router;
+// module.exports = router;

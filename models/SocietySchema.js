@@ -2,21 +2,20 @@ const mongoose = require("mongoose");
 
 const societySchema = new mongoose.Schema(
 	{
-		username: {
+		societyname: {
 			type: String,
 			required: true,
 			unique: true,
 		},
-		profilePicture: { type: String, default: "AWSSocietyLogoDefualt.jpg" },
-
+		contact: { type: String, required: true },
 		email: { type: String, required: true, unique: true },
 		password: { type: String, required: true },
-		buildingName: { type: String, required: true },
 		address: { type: String, required: true },
-		// jobs: [{ type: mongoose.Schema.Types.ObjectId, ref: "Job" }],
+		city: { type: String, required: true },
+		pincode: { type: String, required: true },
 		residentsCount: { type: Number, default: 0 },
 		location: {
-			lonngitude: { type: Number },
+			longitude: { type: Number },
 			latitude: { type: Number },
 			default: { type: String, default: "Not provided" },
 			googleMapLink: { type: String, default: "Not provided" },

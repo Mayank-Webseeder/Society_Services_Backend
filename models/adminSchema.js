@@ -11,7 +11,7 @@ const adminSchema = new mongoose.Schema(
     role: {
       type: String,
       default: "admin",
-      immutable: true,  
+      immutable: true,
     },
     subrole: {
       type: String,
