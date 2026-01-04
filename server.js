@@ -99,3 +99,5 @@ mongoose.connect(process.env.MONGO_URI)
 		
 		console.error("❌ MongoDB connection error:", err);
 	});
+
+	//rishah jain commited

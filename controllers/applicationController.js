@@ -243,6 +243,37 @@ exports.getVendorApplicationType = async (req, res) => {
 	}
 };
 
+
+
+exports.completejob=async(req,res)=>{
+	try {
+		const { applicationId } = req.params;
+		const application = await Application.findById(applicationId)
+		if(!application){
+			return res.status(404).json({msg:"application not found"})
+		}
+		const job=await Job.findById(application.job)
+		if(!job){
+			return res.status(404).json({msg:"job not found"})
+		}
+		if(job.society.toString()!==req.user.id){
+			return res.status(403).json({msg:"unauthorized"})
+		}
+		job.status="Completed"
+		await job.save()
+		// application.status="Completed"
+		// await application.save()
+		res.json({msg:"job marked completed successfully"})
+	}
+	catch(error){
+		console.log(error)
+		res.status(500).send("error in completing job")
+	}
+}
+
+
+
+
 // ✅ Society → Get Applicant Count Per Job
 exports.getApplicantCount = async (req, res) => {
 	try {

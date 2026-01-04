@@ -131,13 +131,7 @@ router.get("/getRating", authenticate, getRating);
 
 router.get("/getFeedbacks", authenticate, getFeedbacks);
 
-router.post(
-	"/support",
-	authenticate,
-	authorizeRoles("vendor"),
-	uploadHelpImage,
-	createSupportRequest
-);
+router.post("/support",authenticate,authorizeRoles("vendor"),uploadHelpImage,createSupportRequest);
 
 router.get("/services", getAllServices);
 
