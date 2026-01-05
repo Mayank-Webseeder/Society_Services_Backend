@@ -14,6 +14,7 @@ const { deleteJob } = require("../controllers/admin/jobStatsController");
 
 const {
     getJobApplicants,
+    completejob,
     approveApplication,
     getVendorApplicationType,
     rejectApplication,
@@ -21,6 +22,24 @@ const {
 } = require("../controllers/applicationController");
 
 const { authenticate, authorizeRoles } = require("../middleware/roleBasedAuth");
+
+
+router.get("/dashboard", authenticate, authorizeRoles("society"), (req, res) => {
+    res.json({ msg: "Welcome to Society Dashboard", user: req.user });
+});
+
+router.post("/signup", signupSociety);
+
+router.post("/login", loginSociety);
+
+router.post("/applications/:applicationId/approve", authenticate, authorizeRoles("society"), approveApplication);
+
+
+router.get("/jobs/:id/applicants", authenticate, authorizeRoles("society"), getJobApplicants);
+
+router.put("/applications/:applicationId/compltetjob", authenticate, authorizeRoles("society"), completejob);
+
+router.post("/give-feedback/:jobId", authenticate, authorizeRoles("society"), giveRating);
 
 
 /**
@@ -63,7 +82,7 @@ const { authenticate, authorizeRoles } = require("../middleware/roleBasedAuth");
  *       201:
  *         description: Society registered successfully
  */
-router.post("/signup", signupSociety);
+// router.post("/signup", signupSociety);
 
 
 /**
@@ -90,7 +109,7 @@ router.post("/signup", signupSociety);
  *       200:
  *         description: Login successful
  */
-router.post("/login", loginSociety);
+// router.post("/login", loginSociety);
 
 
 /**
@@ -105,9 +124,9 @@ router.post("/login", loginSociety);
  *       200:
  *         description: Dashboard data
  */
-router.get("/dashboard", authenticate, authorizeRoles("society"), (req, res) => {
-    res.json({ msg: "Welcome to Society Dashboard", user: req.user });
-});
+// router.get("/dashboard", authenticate, authorizeRoles("society"), (req, res) => {
+//     res.json({ msg: "Welcome to Society Dashboard", user: req.user });
+// });
 
 
 /**
@@ -164,7 +183,9 @@ router.get("/jobs/:id", authenticate, authorizeRoles("society"), getJobById);
  *       200:
  *         description: Applicants list
  */
-router.get("/jobs/:id/applicants", authenticate, authorizeRoles("society"), getJobApplicants);
+// router.get("/jobs/:id/applicants", authenticate, authorizeRoles("society"), getJobApplicants);
+
+// router.put("/applications/:applicationId/compltetjob", authenticate, authorizeRoles("society"), completejob);
 
 
 /**
@@ -183,7 +204,7 @@ router.get("/jobs/:id/applicants", authenticate, authorizeRoles("society"), getJ
  *       200:
  *         description: Application approved, job marked completed
  */
-router.post("/applications/:applicationId/approve", authenticate, authorizeRoles("society"), approveApplication);
+// router.post("/applications/:applicationId/approve", authenticate, authorizeRoles("society"), approveApplication);
 
 
 /**
@@ -292,7 +313,7 @@ router.delete("/jobs/:jobId/delete", authenticate, authorizeRoles("society"), de
  *       201:
  *         description: Rating submitted
  */
-router.post("/give-feedback/:jobId", authenticate, authorizeRoles("society"), giveRating);
+// router.post("/give-feedback/:jobId", authenticate, authorizeRoles("society"), giveRating);
 
 
 /**
