@@ -137,7 +137,15 @@ exports.getNearbyJobs = async (req, res) => {
         candidates.push({ parsedLat, parsedLon, source: "top" });
       }
 
-      // GeoLocation shape
+      // GeoJSON Point shape (preferred)
+      if (vendor.location.type === "Point" && Array.isArray(vendor.location.coordinates) && vendor.location.coordinates.length >= 2) {
+        const parsedLon = Number(vendor.location.coordinates[0]);
+        const parsedLat = Number(vendor.location.coordinates[1]);
+        console.debug("vendor.location GeoJSON parsed:", { parsedLat, parsedLon, rawCoords: vendor.location.coordinates });
+        candidates.push({ parsedLat, parsedLon, source: "geojson" });
+      }
+
+      // GeoLocation shape (legacy)
       if (vendor.location.GeoLocation && vendor.location.GeoLocation.latitude != null && vendor.location.GeoLocation.longitude != null) {
         const parsedLat = Number(vendor.location.GeoLocation.latitude);
         const parsedLon = Number(vendor.location.GeoLocation.longitude);
@@ -145,9 +153,9 @@ exports.getNearbyJobs = async (req, res) => {
         candidates.push({ parsedLat, parsedLon, source: "geo" });
       }
 
-      // Choose candidate: prefer top-level non-zero coords, then geo non-zero, then any numeric
+      // Choose candidate: prefer GeoJSON, then top-level non-zero coords, then geo non-zero, then any numeric
       console.debug("vendor.location candidates:", candidates);
-      const preferOrder = ["top", "geo"];
+      const preferOrder = ["geojson", "top", "geo"];
       let chosen = null;
       for (const pref of preferOrder) {
         const c = candidates.find((x) => x.source === pref && !isNaN(x.parsedLat) && !isNaN(x.parsedLon) && x.parsedLat !== 0 && x.parsedLon !== 0);
