@@ -78,7 +78,7 @@ const vendorSchema = new mongoose.Schema(
       },
       coordinates: {
         type: [Number], // [longitude, latitude]
-        required: true,
+        //required: true,
         index: "2dsphere",
       },
       formattedAddress: {
