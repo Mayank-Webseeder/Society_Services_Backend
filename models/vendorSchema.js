@@ -23,6 +23,7 @@ const vendorSchema = new mongoose.Schema(
       city: { type: String, default: "Not Given" },
       state: { type: String, default: "Not Given" },
       pincode: { type: String, default: "000000" },
+      formattedAddress: { type: String, default: "Not Given" },
     },
     averageRating: {
       type: Number,
@@ -63,16 +64,12 @@ const vendorSchema = new mongoose.Schema(
       type: {
         type: String,
         enum: ["Point"],
-        default: "Point",
       },
       coordinates: {
         type: [Number], // [longitude, latitude]
-        //required: true,
-        index: "2dsphere",
       },
       formattedAddress: {
         type: String,
-        default: "Not Given",
       },
     },
     paymentMethods: {
@@ -150,6 +147,23 @@ const vendorSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-vendorSchema.index({ location: "2dsphere" });
+vendorSchema.index({ location: "2dsphere" }, { sparse: true });
+
+// 🔧 Prevent inserting documents with incomplete geo objects which cause MongoDB to fail extracting geo keys
+vendorSchema.pre('save', function (next) {
+  try {
+    if (this.location) {
+      const coords = this.location.coordinates;
+      // coordinates must be an array of two valid numbers [lon, lat]
+      if (!Array.isArray(coords) || coords.length !== 2 || coords.some((n) => typeof n !== 'number' || Number.isNaN(n))) {
+        // Remove invalid/partial location so geo-index has nothing to extract
+        this.location = undefined;
+      }
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 
 module.exports = mongoose.model("Vendor", vendorSchema);

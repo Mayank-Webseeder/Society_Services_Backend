@@ -277,9 +277,14 @@ exports.createVendorProfile = async (req, res) => {
       }
     }
 
-    // formattedAddress is preserved
+    // formattedAddress is preserved only when coordinates are present. If coords are missing, save it under vendor.address to avoid creating a partial geo object
     if (req.body["location.formattedAddress"]) {
-      newLocation.formattedAddress = req.body["location.formattedAddress"];
+      if (newLocation.coordinates) {
+        newLocation.formattedAddress = req.body["location.formattedAddress"];
+      } else {
+        // store fallback so user's input isn't lost
+        vendor.address.formattedAddress = req.body["location.formattedAddress"];
+      }
     }
 
     vendor.location = newLocation;
