@@ -76,7 +76,6 @@ exports.createJob = async (req, res) => {
   }
 };
 
-
 // 2. Vendor: Get Jobs Nearby (with application status)
 exports.getNearbyJobs = async (req, res) => {
   try {
@@ -89,7 +88,9 @@ exports.getNearbyJobs = async (req, res) => {
     // We must fetch vendor coordinates from the DB only (no URL fallback)
     if (!vendor) {
       console.log("Vendor not found for id:", vendorId);
-      return res.status(404).json({ msg: "Vendor not found. Check your auth token." });
+      return res
+        .status(404)
+        .json({ msg: "Vendor not found. Check your auth token." });
     }
 
     let lat = null;
@@ -112,35 +113,70 @@ exports.getNearbyJobs = async (req, res) => {
       }
 
       const candidates = [];
+      if (
+        vendor.location?.type === "Point" &&
+        Array.isArray(vendor.location.coordinates) &&
+        vendor.location.coordinates.length === 2
+      ) {
+        const [lon, lat] = vendor.location.coordinates.map(Number);
+
+        if (!isNaN(lat) && !isNaN(lon)) {
+          candidates.push({
+            parsedLat: lat,
+            parsedLon: lon,
+            source: "geojson",
+          });
+        }
+      }
 
       // Top-level latitude/longitude (legacy) - attempt to read from raw DB doc if undefined on Mongoose doc
       let topLat = vendor.location.latitude;
       let topLon = vendor.location.longitude;
       if ((topLat === undefined || topLon === undefined) && vendor._id) {
         try {
-          const raw = await Vendor.collection.findOne({ _id: vendor._id }, { projection: { 'location.latitude': 1, 'location.longitude': 1 } });
+          const raw = await Vendor.collection.findOne(
+            { _id: vendor._id },
+            { projection: { "location.latitude": 1, "location.longitude": 1 } }
+          );
           if (raw && raw.location) {
             topLat = raw.location.latitude;
             topLon = raw.location.longitude;
-            console.debug('vendor.location raw-from-db:', { topLat, topLon });
+            console.debug("vendor.location raw-from-db:", { topLat, topLon });
           }
         } catch (err) {
-          console.warn('Failed to fetch raw vendor.location from collection:', err.message);
+          console.warn(
+            "Failed to fetch raw vendor.location from collection:",
+            err.message
+          );
         }
       }
 
       if (topLat != null && topLon != null) {
         const parsedLat = Number(topLat);
         const parsedLon = Number(topLon);
-        console.debug("vendor.location top-level parsed:", { parsedLat, parsedLon, rawLat: topLat, rawLon: topLon });
+        console.debug("vendor.location top-level parsed:", {
+          parsedLat,
+          parsedLon,
+          rawLat: topLat,
+          rawLon: topLon,
+        });
         candidates.push({ parsedLat, parsedLon, source: "top" });
       }
 
       // GeoLocation shape
-      if (vendor.location.GeoLocation && vendor.location.GeoLocation.latitude != null && vendor.location.GeoLocation.longitude != null) {
+      if (
+        vendor.location.GeoLocation &&
+        vendor.location.GeoLocation.latitude != null &&
+        vendor.location.GeoLocation.longitude != null
+      ) {
         const parsedLat = Number(vendor.location.GeoLocation.latitude);
         const parsedLon = Number(vendor.location.GeoLocation.longitude);
-        console.debug("vendor.location.GeoLocation parsed:", { parsedLat, parsedLon, rawLat: vendor.location.GeoLocation.latitude, rawLon: vendor.location.GeoLocation.longitude });
+        console.debug("vendor.location.GeoLocation parsed:", {
+          parsedLat,
+          parsedLon,
+          rawLat: vendor.location.GeoLocation.latitude,
+          rawLon: vendor.location.GeoLocation.longitude,
+        });
         candidates.push({ parsedLat, parsedLon, source: "geo" });
       }
 
@@ -149,28 +185,42 @@ exports.getNearbyJobs = async (req, res) => {
       const preferOrder = ["top", "geo"];
       let chosen = null;
       for (const pref of preferOrder) {
-        const c = candidates.find((x) => x.source === pref && !isNaN(x.parsedLat) && !isNaN(x.parsedLon) && x.parsedLat !== 0 && x.parsedLon !== 0);
+        const c = candidates.find(
+          (x) =>
+            x.source === pref &&
+            !isNaN(x.parsedLat) &&
+            !isNaN(x.parsedLon) &&
+            x.parsedLat !== 0 &&
+            x.parsedLon !== 0
+        );
         if (c) {
           chosen = c;
           break;
         }
       }
       if (!chosen) {
-        const c = candidates.find((x) => !isNaN(x.parsedLat) && !isNaN(x.parsedLon));
+        const c = candidates.find(
+          (x) => !isNaN(x.parsedLat) && !isNaN(x.parsedLon)
+        );
         if (c) chosen = c;
       }
 
       if (chosen) {
         lat = chosen.parsedLat;
         lon = chosen.parsedLon;
-        console.log(`Using ${chosen.source} coords for vendor: lat=${lat}, lon=${lon}`);
+        console.log(
+          `Using ${chosen.source} coords for vendor: lat=${lat}, lon=${lon}`
+        );
       } else {
         console.debug("No usable vendor.coords chosen from candidates");
       }
     }
 
     if (lat == null || lon == null) {
-      console.log("Vendor location missing or incomplete (zero/undefined):", vendor);
+      console.log(
+        "Vendor location missing or incomplete (zero/undefined):",
+        vendor
+      );
       return res.status(400).json({
         msg: "Vendor location not set. Please update your profile with valid latitude & longitude.",
       });
@@ -194,7 +244,9 @@ exports.getNearbyJobs = async (req, res) => {
 
     let jobs = [];
 
-    console.log(`getNearbyJobs: vendor coords lat=${lat}, lon=${lon}, maxDistance=${MAX_DISTANCE}`);
+    console.log(
+      `getNearbyJobs: vendor coords lat=${lat}, lon=${lon}, maxDistance=${MAX_DISTANCE}`
+    );
 
     try {
       const pipeline = [
@@ -253,9 +305,15 @@ exports.getNearbyJobs = async (req, res) => {
 
     // Diagnostic counts
     try {
-      const geoCount = await Job.countDocuments({ 'geo.coordinates.0': { $exists: true } });
-      const locCount = await Job.countDocuments({ 'location.latitude': { $exists: true } });
-      console.log(`getNearbyJobs: docs with geo.coordinates: ${geoCount}, docs with location lat/lon: ${locCount}`);
+      const geoCount = await Job.countDocuments({
+        "geo.coordinates.0": { $exists: true },
+      });
+      const locCount = await Job.countDocuments({
+        "location.latitude": { $exists: true },
+      });
+      console.log(
+        `getNearbyJobs: docs with geo.coordinates: ${geoCount}, docs with location lat/lon: ${locCount}`
+      );
     } catch (err) {
       console.warn("getNearbyJobs diagnostic counts failed:", err.message);
     }
@@ -268,14 +326,19 @@ exports.getNearbyJobs = async (req, res) => {
       const dLon = (lon2 - lon1) * toRad;
       const a =
         Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        Math.cos(lat1 * toRad) *
+          Math.cos(lat2 * toRad) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       return R * c;
     };
 
     // Find candidate jobs that might not have geo field
     const degDelta = 0.2; // ~20km latitude delta
-    const lonDelta = Math.abs(degDelta / Math.max(Math.cos((lat * Math.PI) / 180), 0.0001));
+    const lonDelta = Math.abs(
+      degDelta / Math.max(Math.cos((lat * Math.PI) / 180), 0.0001)
+    );
 
     const bboxFilter = {
       "location.latitude": { $gte: lat - degDelta, $lte: lat + degDelta },
@@ -287,14 +350,27 @@ exports.getNearbyJobs = async (req, res) => {
     if (quotationRequired === "false") bboxFilter.quotationRequired = false;
 
     const candidates = await Job.find(bboxFilter)
-      .populate("society", "societyname email contact address city residentsCount")
+      .populate(
+        "society",
+        "societyname email contact address city residentsCount"
+      )
       .lean();
 
     // Attach computed distance and filter within 20km
     const candidatesWithin = candidates
       .map((job) => {
-        if (!job.location || job.location.latitude == null || job.location.longitude == null) return null;
-        const d = haversine(lat, lon, Number(job.location.latitude), Number(job.location.longitude));
+        if (
+          !job.location ||
+          job.location.latitude == null ||
+          job.location.longitude == null
+        )
+          return null;
+        const d = haversine(
+          lat,
+          lon,
+          Number(job.location.latitude),
+          Number(job.location.longitude)
+        );
         return { ...job, distance: d };
       })
       .filter((j) => j && j.distance <= MAX_DISTANCE);
@@ -308,12 +384,17 @@ exports.getNearbyJobs = async (req, res) => {
 
     candidatesWithin.forEach((j) => {
       const key = String(j._id);
-      if (!mapById.has(key) || (mapById.get(key).distance ?? Infinity) > j.distance) {
+      if (
+        !mapById.has(key) ||
+        (mapById.get(key).distance ?? Infinity) > j.distance
+      ) {
         mapById.set(key, j);
       }
     });
 
-    jobs = Array.from(mapById.values()).sort((a, b) => (a.distance || 0) - (b.distance || 0));
+    jobs = Array.from(mapById.values()).sort(
+      (a, b) => (a.distance || 0) - (b.distance || 0)
+    );
 
     // Ensure final set respects MAX_DISTANCE
     jobs = jobs.filter((j) => (j.distance ?? Infinity) <= MAX_DISTANCE);
@@ -354,7 +435,8 @@ exports.getNearbyJobs = async (req, res) => {
 
       // Distance (meters and km)
       distanceMeters: job.distance ?? null,
-      distanceKm: job.distance != null ? Number((job.distance / 1000).toFixed(2)) : null,
+      distanceKm:
+        job.distance != null ? Number((job.distance / 1000).toFixed(2)) : null,
 
       completedAt: job.completedAt
         ? new Date(job.completedAt).toLocaleString("en-IN", {
@@ -395,19 +477,33 @@ exports.getNearbyJobs = async (req, res) => {
 exports.getNearbyJobsDebug = async (req, res) => {
   try {
     if (process.env.NODE_ENV === "production") {
-      return res.status(403).json({ msg: "Debug endpoint disabled in production" });
+      return res
+        .status(403)
+        .json({ msg: "Debug endpoint disabled in production" });
     }
 
-    const { lat: qlat, lon: qlon, latitude, longitude, maxDistance, quotationRequired, vendorId } = req.query;
+    const {
+      lat: qlat,
+      lon: qlon,
+      latitude,
+      longitude,
+      maxDistance,
+      quotationRequired,
+      vendorId,
+    } = req.query;
     const lat = Number(qlat ?? latitude);
     const lon = Number(qlon ?? longitude);
     const MAX_DISTANCE = Number(maxDistance) || 20000;
 
     if (!lat || !lon || isNaN(lat) || isNaN(lon)) {
-      return res.status(400).json({ msg: "Provide numeric lat and lon query params" });
+      return res
+        .status(400)
+        .json({ msg: "Provide numeric lat and lon query params" });
     }
 
-    console.log(`Debug nearby: lat=${lat}, lon=${lon}, maxDistance=${MAX_DISTANCE}`);
+    console.log(
+      `Debug nearby: lat=${lat}, lon=${lon}, maxDistance=${MAX_DISTANCE}`
+    );
 
     // Run geoNear agg
     const match = { isActive: true, status: { $ne: "Expired" } };
@@ -426,9 +522,25 @@ exports.getNearbyJobsDebug = async (req, res) => {
             query: match,
           },
         },
-        { $lookup: { from: "societies", localField: "society", foreignField: "_id", as: "society" } },
+        {
+          $lookup: {
+            from: "societies",
+            localField: "society",
+            foreignField: "_id",
+            as: "society",
+          },
+        },
         { $unwind: { path: "$society", preserveNullAndEmptyArrays: true } },
-        { $project: { title: 1, location: 1, distance: 1, society: 1, createdAt: 1, status: 1 } },
+        {
+          $project: {
+            title: 1,
+            location: 1,
+            distance: 1,
+            society: 1,
+            createdAt: 1,
+            status: 1,
+          },
+        },
       ];
       jobs = await Job.aggregate(pipeline);
       console.log(`Debug: $geoNear returned ${jobs.length} job(s)`);
@@ -439,9 +551,15 @@ exports.getNearbyJobsDebug = async (req, res) => {
 
     // Count docs with geo and location fields for diagnosis
     try {
-      const geoCount = await Job.countDocuments({ 'geo.coordinates.0': { $exists: true } });
-      const locCount = await Job.countDocuments({ 'location.latitude': { $exists: true } });
-      console.log(`Debug: docs with geo.coordinates: ${geoCount}, docs with location lat/lon: ${locCount}`);
+      const geoCount = await Job.countDocuments({
+        "geo.coordinates.0": { $exists: true },
+      });
+      const locCount = await Job.countDocuments({
+        "location.latitude": { $exists: true },
+      });
+      console.log(
+        `Debug: docs with geo.coordinates: ${geoCount}, docs with location lat/lon: ${locCount}`
+      );
     } catch (err) {
       console.warn("Debug counts failed:", err.message);
     }
@@ -452,13 +570,19 @@ exports.getNearbyJobsDebug = async (req, res) => {
       const R = 6371000;
       const dLat = (lat2 - lat1) * toRad;
       const dLon = (lon2 - lon1) * toRad;
-      const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.sin(dLon / 2) ** 2;
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1 * toRad) *
+          Math.cos(lat2 * toRad) *
+          Math.sin(dLon / 2) ** 2;
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       return R * c;
     };
 
     const degDelta = 0.3;
-    const lonDelta = Math.abs(degDelta / Math.max(Math.cos((lat * Math.PI) / 180), 0.0001));
+    const lonDelta = Math.abs(
+      degDelta / Math.max(Math.cos((lat * Math.PI) / 180), 0.0001)
+    );
 
     const bboxFilter = {
       "location.latitude": { $gte: lat - degDelta, $lte: lat + degDelta },
@@ -471,13 +595,25 @@ exports.getNearbyJobsDebug = async (req, res) => {
 
     const candidatesWithin = candidates
       .map((job) => {
-        if (!job.location || job.location.latitude == null || job.location.longitude == null) return null;
-        const d = haversine(lat, lon, Number(job.location.latitude), Number(job.location.longitude));
+        if (
+          !job.location ||
+          job.location.latitude == null ||
+          job.location.longitude == null
+        )
+          return null;
+        const d = haversine(
+          lat,
+          lon,
+          Number(job.location.latitude),
+          Number(job.location.longitude)
+        );
         return { ...job, distance: d };
       })
       .filter((j) => j && j.distance <= MAX_DISTANCE);
 
-    console.log(`Debug: candidates found by location fields: ${candidatesWithin.length}`);
+    console.log(
+      `Debug: candidates found by location fields: ${candidatesWithin.length}`
+    );
 
     // If both sources are empty, run an expanded $geoNear (no maxDistance limit) to see if any jobs are near at all
     if ((jobs.length === 0 || !jobs) && candidatesWithin.length === 0) {
@@ -496,22 +632,36 @@ exports.getNearbyJobsDebug = async (req, res) => {
           { $limit: 5 },
         ];
         const anyNearby = await Job.aggregate(anyPipeline);
-        console.log(`Debug: expanded $geoNear found ${anyNearby.length} documents (first few):`, anyNearby.slice(0, 3));
+        console.log(
+          `Debug: expanded $geoNear found ${anyNearby.length} documents (first few):`,
+          anyNearby.slice(0, 3)
+        );
       } catch (err) {
         console.warn("Debug expanded $geoNear failed:", err.message);
       }
 
       // Show a few documents that actually have geo coordinates and compute distances both ways (in case coords are swapped)
       try {
-        const geoDocs = await Job.find({ 'geo.coordinates.0': { $exists: true } }).limit(5).lean();
-        console.log('Debug: sample geo documents:', geoDocs.map(d => ({ id: d._id, geo: d.geo, location: d.location })));
+        const geoDocs = await Job.find({
+          "geo.coordinates.0": { $exists: true },
+        })
+          .limit(5)
+          .lean();
+        console.log(
+          "Debug: sample geo documents:",
+          geoDocs.map((d) => ({ id: d._id, geo: d.geo, location: d.location }))
+        );
 
         const haversine = (lat1, lon1, lat2, lon2) => {
           const toRad = Math.PI / 180;
           const R = 6371000;
           const dLat = (lat2 - lat1) * toRad;
           const dLon = (lon2 - lon1) * toRad;
-          const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.sin(dLon / 2) ** 2;
+          const a =
+            Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * toRad) *
+              Math.cos(lat2 * toRad) *
+              Math.sin(dLon / 2) ** 2;
           const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
           return R * c;
         };
@@ -525,10 +675,16 @@ exports.getNearbyJobsDebug = async (req, res) => {
           const distCorrect = haversine(lat, lon, docLat, docLon);
           const distSwapped = haversine(lat, lon, docLon, docLat);
 
-          console.log(`Debug geo-doc ${doc._id}: stored coords=[${coords}], dist(as lon,lat)=${Math.round(distCorrect)}m, dist(swapped)=${Math.round(distSwapped)}m`);
+          console.log(
+            `Debug geo-doc ${
+              doc._id
+            }: stored coords=[${coords}], dist(as lon,lat)=${Math.round(
+              distCorrect
+            )}m, dist(swapped)=${Math.round(distSwapped)}m`
+          );
         });
       } catch (err) {
-        console.warn('Debug sample geo-docs failed:', err.message);
+        console.warn("Debug sample geo-docs failed:", err.message);
       }
     }
 
@@ -537,195 +693,226 @@ exports.getNearbyJobsDebug = async (req, res) => {
     jobs.forEach((j) => mapById.set(String(j._id), j));
     candidatesWithin.forEach((j) => {
       const key = String(j._id);
-      if (!mapById.has(key) || (mapById.get(key).distance ?? Infinity) > j.distance) mapById.set(key, j);
+      if (
+        !mapById.has(key) ||
+        (mapById.get(key).distance ?? Infinity) > j.distance
+      )
+        mapById.set(key, j);
     });
 
-    const results = Array.from(mapById.values()).sort((a, b) => (a.distance || 0) - (b.distance || 0));
+    const results = Array.from(mapById.values()).sort(
+      (a, b) => (a.distance || 0) - (b.distance || 0)
+    );
 
     // Optionally attach application status if vendorId provided
     if (vendorId && results.length) {
       const jobIds = results.map((r) => r._id);
-      const vendorApplications = await Application.find({ vendor: vendorId, job: { $in: jobIds } }).select(
-        "job status applicationType"
-      );
+      const vendorApplications = await Application.find({
+        vendor: vendorId,
+        job: { $in: jobIds },
+      }).select("job status applicationType");
       const statusMap = {};
       vendorApplications.forEach((app) => {
-        statusMap[app.job.toString()] = { status: app.status, type: app.applicationType };
+        statusMap[app.job.toString()] = {
+          status: app.status,
+          type: app.applicationType,
+        };
       });
-      results.forEach((r) => (r.applicationStatus = statusMap[String(r._id)] || null));
+      results.forEach(
+        (r) => (r.applicationStatus = statusMap[String(r._id)] || null)
+      );
     }
 
-    res.json(results.map((r) => ({ ...r, distanceKm: r.distance ? Number((r.distance / 1000).toFixed(2)) : null })));
+    res.json(
+      results.map((r) => ({
+        ...r,
+        distanceKm: r.distance ? Number((r.distance / 1000).toFixed(2)) : null,
+      }))
+    );
   } catch (err) {
     console.error("Error in getNearbyJobsDebug:", err);
     res.status(500).json({ msg: "Debug error", error: err.message });
   }
 };
 
-
 exports.deleteJob = async (req, res) => {
-	try {
-		const { id } = req.params;
-		console.log(id);
-		const job = await Job.findById(id);
-		if (!job) return res.status(404).json({ msg: "Job not found" });
-		await Job.deleteOne({ _id: id });
-		res.json({ msg: "Job deleted successfully" });
-	} catch (err) {
-		console.log(err);
-		res.status(500).json({ msg: "Error deleting job", error: err.message });
-	}
+  try {
+    const { id } = req.params;
+    console.log(id);
+    const job = await Job.findById(id);
+    if (!job) return res.status(404).json({ msg: "Job not found" });
+    await Job.deleteOne({ _id: id });
+    res.json({ msg: "Job deleted successfully" });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ msg: "Error deleting job", error: err.message });
+  }
 };
 
 // 3. Get Single Job by ID
 exports.getJobById = async (req, res) => {
-	try {
-		const job = await Job.findById(req.params.id).populate("society", "name email");
-		if (!job) return res.status(404).json({ msg: "Job not found" });
+  try {
+    const job = await Job.findById(req.params.id).populate(
+      "society",
+      "name email"
+    );
+    if (!job) return res.status(404).json({ msg: "Job not found" });
 
-		res.json(job);
-	} catch (err) {
-		res.status(500).json({ msg: "Error fetching job", error: err.message });
-	}
+    res.json(job);
+  } catch (err) {
+    res.status(500).json({ msg: "Error fetching job", error: err.message });
+  }
 };
 
 // 4. Get All Jobs Posted by Society
 exports.getMyPostedJobs = async (req, res) => {
-	try {
-		const jobs = await Job.find({ society: req.user.id }).sort({ createdAt: -1 });
-		res.json(jobs);
-	} catch (err) {
-		res.status(500).json({ msg: "Error fetching posted jobs", error: err.message });
-	}
+  try {
+    const jobs = await Job.find({ society: req.user.id }).sort({
+      createdAt: -1,
+    });
+    res.json(jobs);
+  } catch (err) {
+    res
+      .status(500)
+      .json({ msg: "Error fetching posted jobs", error: err.message });
+  }
 };
 
 // 5. (Optional) Filter Jobs by Type and Date Range
 exports.filterJobsByTypeAndDate = async (req, res) => {
-	try {
-		const { type, startDate, endDate } = req.query;
+  try {
+    const { type, startDate, endDate } = req.query;
 
-		const filter = {};
+    const filter = {};
 
-		if (type) filter.type = type;
+    if (type) filter.type = type;
 
-		if (startDate || endDate) {
-			filter.createdAt = {};
-			if (startDate) filter.createdAt.$gte = new Date(startDate);
-			if (endDate) filter.createdAt.$lte = new Date(endDate);
-		}
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) filter.createdAt.$gte = new Date(startDate);
+      if (endDate) filter.createdAt.$lte = new Date(endDate);
+    }
 
-		const jobs = await Job.find(filter).sort({ createdAt: -1 });
-		res.json(jobs);
-	} catch (err) {
-		res.status(500).json({ msg: "Failed to filter jobs", error: err.message });
-	}
+    const jobs = await Job.find(filter).sort({ createdAt: -1 });
+    res.json(jobs);
+  } catch (err) {
+    res.status(500).json({ msg: "Failed to filter jobs", error: err.message });
+  }
 };
 
 // 6. Expire Jobs Older Than 90 Days
 exports.expireOldJobs = async (req, res) => {
-	try {
-		const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  try {
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
 
-		const jobsToExpire = await Job.find({
-			createdAt: { $lt: ninetyDaysAgo },
-			status: { $nin: ["Completed", "Expired"] },
-		});
+    const jobsToExpire = await Job.find({
+      createdAt: { $lt: ninetyDaysAgo },
+      status: { $nin: ["Completed", "Expired"] },
+    });
 
-		for (const job of jobsToExpire) {
-			job.status = "Expired";
-			await job.save();
-		}
+    for (const job of jobsToExpire) {
+      job.status = "Expired";
+      await job.save();
+    }
 
-		res.json({ msg: `${jobsToExpire.length} job(s) marked as Expired.` });
-	} catch (err) {
-		res.status(500).json({ msg: "Failed to expire old jobs", error: err.message });
-	}
+    res.json({ msg: `${jobsToExpire.length} job(s) marked as Expired.` });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ msg: "Failed to expire old jobs", error: err.message });
+  }
 };
 
 exports.getSocietyDetails = async (req, res) => {
-	try {
-		const societyId = req.user.id;
-		const society = await Society.findById(societyId).select(
-			"username buildingName email address profilePicture residentsCount location isApproved createdAt updatedAt"
-		);
+  try {
+    const societyId = req.user.id;
+    const society = await Society.findById(societyId).select(
+      "username buildingName email address profilePicture residentsCount location isApproved createdAt updatedAt"
+    );
 
-		if (!society) return res.status(404).json({ msg: "Society not found" });
+    if (!society) return res.status(404).json({ msg: "Society not found" });
 
-		const jobs = await Job.find({ society: societyId });
+    const jobs = await Job.find({ society: societyId });
 
-		const totalJobsPosted = jobs.filter((job) => ["New", "Completed", "Expired"].includes(job.status)).length;
-		const activeJobsCount = jobs.filter((job) => job.status === "Completed").length;
+    const totalJobsPosted = jobs.filter((job) =>
+      ["New", "Completed", "Expired"].includes(job.status)
+    ).length;
+    const activeJobsCount = jobs.filter(
+      (job) => job.status === "Completed"
+    ).length;
 
-		const response = {
-			id: society._id ?? "N/A",
-			username: society.username ?? "N/A",
-			name: society.buildingName ?? "N/A",
-			location: society.location?.default ?? "N/A",
-			address: society.address ?? "N/A",
-			email: society.email ?? "N/A",
-			residentsCount: society.residentsCount ?? "N/A",
-			profilePicture: society.profilePicture ?? "N/A",
-			totalJobsPosted,
-			activeJobsCount,
-			status: society.isApproved ? "Active" : "Pending",
-			isApproved: society.isApproved ?? false,
-			createdAt: society.createdAt ?? "N/A",
-			updatedAt: society.updatedAt ?? "N/A",
-		};
+    const response = {
+      id: society._id ?? "N/A",
+      username: society.username ?? "N/A",
+      name: society.buildingName ?? "N/A",
+      location: society.location?.default ?? "N/A",
+      address: society.address ?? "N/A",
+      email: society.email ?? "N/A",
+      residentsCount: society.residentsCount ?? "N/A",
+      profilePicture: society.profilePicture ?? "N/A",
+      totalJobsPosted,
+      activeJobsCount,
+      status: society.isApproved ? "Active" : "Pending",
+      isApproved: society.isApproved ?? false,
+      createdAt: society.createdAt ?? "N/A",
+      updatedAt: society.updatedAt ?? "N/A",
+    };
 
-		res.json({ society: response });
-	} catch (err) {
-		console.error("Error in getSocietyOverview:", err);
-		res.status(500).json({
-			msg: "Failed to fetch society overview",
-			error: err.message,
-		});
-	}
+    res.json({ society: response });
+  } catch (err) {
+    console.error("Error in getSocietyOverview:", err);
+    res.status(500).json({
+      msg: "Failed to fetch society overview",
+      error: err.message,
+    });
+  }
 };
 
 exports.getActiveSocientyJobs = async (req, res) => {
-	try {
-		const societyId = req.user.id;
+  try {
+    const societyId = req.user.id;
 
-		const activeJobs = await Job.find({
-			society: societyId,
-			status: "Completed",
-		}).select(
-			"title type requiredExperience details contactNumber location offeredPrice scheduledFor quotationRequired completedAt"
-		);
+    const activeJobs = await Job.find({
+      society: societyId,
+      status: "Completed",
+    }).select(
+      "title type requiredExperience details contactNumber location offeredPrice scheduledFor quotationRequired completedAt"
+    );
 
-		if (!activeJobs || activeJobs.length === 0) {
-			return res.status(200).json({ msg: "No active (completed) jobs found", activeJobs: [] });
-		}
+    if (!activeJobs || activeJobs.length === 0) {
+      return res
+        .status(200)
+        .json({ msg: "No active (completed) jobs found", activeJobs: [] });
+    }
 
-		const formattedJobs = activeJobs.map((job) => ({
-			jobId: job._id,
-			title: job.title,
-			type: job.type,
-			requiredExperience: job.requiredExperience,
-			details: job.details,
-			contactNumber: job.contactNumber,
-			location: {
-				latitude: job.location.latitude,
-				longitude: job.location.longitude,
-				googleMapLink: job.location.googleMapLink,
-			},
-			offeredPrice: job.offeredPrice,
-			scheduledFor: job.scheduledFor,
-			quotationRequired: job.quotationRequired,
-			completedAt: job.completedAt,
-		}));
+    const formattedJobs = activeJobs.map((job) => ({
+      jobId: job._id,
+      title: job.title,
+      type: job.type,
+      requiredExperience: job.requiredExperience,
+      details: job.details,
+      contactNumber: job.contactNumber,
+      location: {
+        latitude: job.location.latitude,
+        longitude: job.location.longitude,
+        googleMapLink: job.location.googleMapLink,
+      },
+      offeredPrice: job.offeredPrice,
+      scheduledFor: job.scheduledFor,
+      quotationRequired: job.quotationRequired,
+      completedAt: job.completedAt,
+    }));
 
-		res.status(200).json({
-			msg: "Active (Completed) jobs fetched successfully",
-			totalActiveJobs: formattedJobs.length,
-			activeJobs: formattedJobs,
-		});
-	} catch (err) {
-		console.error("Error in getActiveJobs:", err);
-		res.status(500).json({
-			msg: "Failed to fetch active jobs",
-			error: err.message,
-		});
-	}
+    res.status(200).json({
+      msg: "Active (Completed) jobs fetched successfully",
+      totalActiveJobs: formattedJobs.length,
+      activeJobs: formattedJobs,
+    });
+  } catch (err) {
+    console.error("Error in getActiveJobs:", err);
+    res.status(500).json({
+      msg: "Failed to fetch active jobs",
+      error: err.message,
+    });
+  }
 };
