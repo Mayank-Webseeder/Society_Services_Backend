@@ -52,10 +52,10 @@ exports.getVendorDashboard = async (req, res) => {
 exports.getVendorProfile = async (req, res) => {
   try {
     const vendor = await Vendor.findById(req.user.id)
-      .select("-password -__v") // hide sensitive/unnecessary fields
+      .select("-password -__v")
       .populate({
         path: "services",
-        select: "name price isActive", // show only relevant fields from Services model
+        select: "name isActive",
       })
       .lean();
 
