@@ -56,7 +56,7 @@ const vendorSchema = new mongoose.Schema(
     services: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Services", // Reference to central Services model
+        ref: "Service", // Reference to central Service model
       },
     ],
 
