@@ -33,8 +33,9 @@ exports.signupSociety = async (req, res) => {
 		});
 		console.log("Saved Society:", newSociety);
 		await newSociety.save();
-		const token = jwt.sign({ id: newSociety._id, role: newSociety.role }, process.env.JWT_SECRET, { expiresIn: "24h" });
-		res.status(201).json({ msg: "Society registered successfully", authToken: token });
+		//const token = jwt.sign({ id: newSociety._id, role: newSociety.role }, process.env.JWT_SECRET, { expiresIn: "24h" });
+		//res.status(201).json({ msg: "Society registered successfully", authToken: token });
+		res.status(201).json({ msg: "Society registered successfully"});
 	} catch (err) {
 		console.log(err);
 		res.status(500).json({ msg: "Server error", error: err.message });
