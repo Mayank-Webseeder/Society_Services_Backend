@@ -78,6 +78,18 @@ app.use("/api/vendor", vendorRoutes);
 app.use("/api/society", societyRoutes);
 app.use("/api/jobs", jobRoutes); // e.g. POST /api/jobs/create, GET /api/jobs/nearby
 app.use("/api/applications", applicationRoutes); // e.g. POST /api/applications/:id/apply
+app.use("/api/admin/services", require("./routes/admin/serviceRoutes"));
+
+app.use("/api/admin/service-categories", require("./routes/admin/serviceCategoryRoutes")); //serviceCategoryRoutes
+
+// Vendor service routes
+app.use(
+  "/api/vendor/services",
+  require("./routes/vendor/vendorServiceRoutes")
+);
+
+
+
 // ✅ MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
 .then(async () => {
