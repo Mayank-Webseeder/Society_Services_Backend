@@ -258,18 +258,33 @@ exports.createVendorProfile = async (req, res) => {
       pincode: req.body["address.pincode"],
     };
 
-    // Only attach GeoLocation if both latitude and longitude are provided
+    // Build location using GeoJSON Point format (backward-compatible with old shapes)
     const newLocation = {};
+
+    // Primary: use explicit GeoLocation fields from body (set earlier as latitude/longitude)
     if (latitude != null && longitude != null) {
-      newLocation.GeoLocation = { latitude, longitude };
+      newLocation.type = "Point";
+      newLocation.coordinates = [longitude, latitude]; // [lon, lat]
     }
-    if (req.body["location.formattedAddress"]) {
-      newLocation.formattedAddress = req.body["location.formattedAddress"];
-    }
-    // If location already has some top-level latitude/longitude fields (legacy), preserve them
+
+    // Secondary: allow top-level location.latitude & location.longitude (legacy payloads)
     if (req.body["location.latitude"] !== undefined && req.body["location.longitude"] !== undefined) {
-      newLocation.latitude = Number(req.body["location.latitude"]);
-      newLocation.longitude = Number(req.body["location.longitude"]);
+      const lat2 = Number(req.body["location.latitude"]);
+      const lon2 = Number(req.body["location.longitude"]);
+      if (!isNaN(lat2) && !isNaN(lon2)) {
+        newLocation.type = "Point";
+        newLocation.coordinates = [lon2, lat2];
+      }
+    }
+
+    // formattedAddress is preserved only when coordinates are present. If coords are missing, save it under vendor.address to avoid creating a partial geo object
+    if (req.body["location.formattedAddress"]) {
+      if (newLocation.coordinates) {
+        newLocation.formattedAddress = req.body["location.formattedAddress"];
+      } else {
+        // store fallback so user's input isn't lost
+        vendor.address.formattedAddress = req.body["location.formattedAddress"];
+      }
     }
 
     vendor.location = newLocation;
