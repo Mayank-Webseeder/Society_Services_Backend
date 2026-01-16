@@ -88,8 +88,6 @@ app.use(
   require("./routes/vendor/vendorServiceRoutes")
 );
 
-
-
 // ✅ MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
 .then(async () => {
