@@ -23,7 +23,8 @@ const allowedOrigins = [
         "https://delightful-pastelito-988e6f.netlify.app",
         "https://admin.mysocietyneeds.com",
         "https://admin-society.webseeder.tech",
-        "https://vendor.mysocietyneeds.com"
+        "https://vendor.mysocietyneeds.com",
+		"https://society.mysocietyneeds.com/"
 ];
 
 app.use(
