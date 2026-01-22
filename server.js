@@ -24,7 +24,7 @@ const allowedOrigins = [
         "https://admin.mysocietyneeds.com",
         "https://admin-society.webseeder.tech",
         "https://vendor.mysocietyneeds.com",
-		"https://society.mysocietyneeds.com/"
+		"https://society.mysocietyneeds.com"
 ];
 
 app.use(
