@@ -1,4 +1,6 @@
 const express = require("express");
+const { getAllJobs } = require("../controllers/jobController");
+
 const router = express.Router();
 const {
   createJob,
@@ -16,6 +18,8 @@ const { authorizeRoles } = require("../middleware/roleBasedAuth");
 
 
 router.post("/create", authMiddleware, authorizeRoles("society"), createJob);
+
+router.get("/", authMiddleware, authorizeRoles("society"), getAllJobs);
 
 router.get("/nearby", authMiddleware, authorizeRoles("vendor"), getNearbyJobs);
 

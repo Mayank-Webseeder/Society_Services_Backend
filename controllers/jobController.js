@@ -76,6 +76,26 @@ exports.createJob = async (req, res) => {
   }
 };
 
+// 🔹 GET ALL JOBS (for society dashboard)
+exports.getAllJobs = async (req, res) => {
+  try {
+    const jobs = await Job.find({ society: req.user.id }).sort({
+      createdAt: -1,
+    });
+
+    res.status(200).json({
+      success: true,
+      jobs,
+    });
+  } catch (error) {
+    console.error("Get all jobs error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch jobs",
+    });
+  }
+};
+
 // 2. Vendor: Get Jobs Nearby (with application status)
 exports.getNearbyJobs = async (req, res) => {
   try {

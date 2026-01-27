@@ -19,6 +19,7 @@ const PORT = process.env.PORT || 5003;
 const allowedOrigins = [
         "http://localhost:5173",
         "http://localhost:5174",
+		"http://localhost:5175",
         "https://social-services-app.vercel.app",
         "https://delightful-pastelito-988e6f.netlify.app",
         "https://admin.mysocietyneeds.com",
@@ -35,6 +36,8 @@ app.use(
 		allowedHeaders: ["Content-Type", "Authorization", "authToken"],
 	})
 );
+
+
 
 // ✅ Body Parsing Middleware
 app.use(express.json({ limit: "10mb" })); // For base64-encoded images
