@@ -16,7 +16,7 @@ exports.getMyApplications = async (req, res) => {
         },
       })
       .lean();
-    // console.log(req.user.id," ",applications);
+    
     res.json(applications);
   } catch (err) {
     console.error("Error in getMyApplications:", err);

@@ -107,7 +107,7 @@ exports.getNearbyJobs = async (req, res) => {
 
     // We must fetch vendor coordinates from the DB only (no URL fallback)
     if (!vendor) {
-      console.log("Vendor not found for id:", vendorId);
+      
       return res
         .status(404)
         .json({ msg: "Vendor not found. Check your auth token." });
@@ -228,19 +228,14 @@ exports.getNearbyJobs = async (req, res) => {
       if (chosen) {
         lat = chosen.parsedLat;
         lon = chosen.parsedLon;
-        console.log(
-          `Using ${chosen.source} coords for vendor: lat=${lat}, lon=${lon}`
-        );
+       
       } else {
         console.debug("No usable vendor.coords chosen from candidates");
       }
     }
 
     if (lat == null || lon == null) {
-      console.log(
-        "Vendor location missing or incomplete (zero/undefined):",
-        vendor
-      );
+      
       return res.status(400).json({
         msg: "Vendor location not set. Please update your profile with valid latitude & longitude.",
       });
@@ -264,9 +259,7 @@ exports.getNearbyJobs = async (req, res) => {
 
     let jobs = [];
 
-    console.log(
-      `getNearbyJobs: vendor coords lat=${lat}, lon=${lon}, maxDistance=${MAX_DISTANCE}`
-    );
+    
 
     try {
       const pipeline = [
@@ -317,7 +310,7 @@ exports.getNearbyJobs = async (req, res) => {
       ];
 
       jobs = await Job.aggregate(pipeline);
-      console.log(`getNearbyJobs: $geoNear returned ${jobs.length} job(s)`);
+      
     } catch (err) {
       console.warn("getNearbyJobs $geoNear failed:", err.message);
       jobs = [];
@@ -331,9 +324,6 @@ exports.getNearbyJobs = async (req, res) => {
       const locCount = await Job.countDocuments({
         "location.latitude": { $exists: true },
       });
-      console.log(
-        `getNearbyJobs: docs with geo.coordinates: ${geoCount}, docs with location lat/lon: ${locCount}`
-      );
     } catch (err) {
       console.warn("getNearbyJobs diagnostic counts failed:", err.message);
     }
@@ -521,9 +511,7 @@ exports.getNearbyJobsDebug = async (req, res) => {
         .json({ msg: "Provide numeric lat and lon query params" });
     }
 
-    console.log(
-      `Debug nearby: lat=${lat}, lon=${lon}, maxDistance=${MAX_DISTANCE}`
-    );
+    
 
     // Run geoNear agg
     const match = { isActive: true, status: { $ne: "Expired" } };
@@ -563,7 +551,7 @@ exports.getNearbyJobsDebug = async (req, res) => {
         },
       ];
       jobs = await Job.aggregate(pipeline);
-      console.log(`Debug: $geoNear returned ${jobs.length} job(s)`);
+      
     } catch (err) {
       console.warn("Debug $geoNear failed:", err.message);
       jobs = [];
@@ -577,9 +565,7 @@ exports.getNearbyJobsDebug = async (req, res) => {
       const locCount = await Job.countDocuments({
         "location.latitude": { $exists: true },
       });
-      console.log(
-        `Debug: docs with geo.coordinates: ${geoCount}, docs with location lat/lon: ${locCount}`
-      );
+      
     } catch (err) {
       console.warn("Debug counts failed:", err.message);
     }
@@ -631,9 +617,7 @@ exports.getNearbyJobsDebug = async (req, res) => {
       })
       .filter((j) => j && j.distance <= MAX_DISTANCE);
 
-    console.log(
-      `Debug: candidates found by location fields: ${candidatesWithin.length}`
-    );
+    
 
     // If both sources are empty, run an expanded $geoNear (no maxDistance limit) to see if any jobs are near at all
     if ((jobs.length === 0 || !jobs) && candidatesWithin.length === 0) {
@@ -652,10 +636,6 @@ exports.getNearbyJobsDebug = async (req, res) => {
           { $limit: 5 },
         ];
         const anyNearby = await Job.aggregate(anyPipeline);
-        console.log(
-          `Debug: expanded $geoNear found ${anyNearby.length} documents (first few):`,
-          anyNearby.slice(0, 3)
-        );
       } catch (err) {
         console.warn("Debug expanded $geoNear failed:", err.message);
       }
@@ -667,10 +647,7 @@ exports.getNearbyJobsDebug = async (req, res) => {
         })
           .limit(5)
           .lean();
-        console.log(
-          "Debug: sample geo documents:",
-          geoDocs.map((d) => ({ id: d._id, geo: d.geo, location: d.location }))
-        );
+        
 
         const haversine = (lat1, lon1, lat2, lon2) => {
           const toRad = Math.PI / 180;
@@ -695,13 +672,7 @@ exports.getNearbyJobsDebug = async (req, res) => {
           const distCorrect = haversine(lat, lon, docLat, docLon);
           const distSwapped = haversine(lat, lon, docLon, docLat);
 
-          console.log(
-            `Debug geo-doc ${
-              doc._id
-            }: stored coords=[${coords}], dist(as lon,lat)=${Math.round(
-              distCorrect
-            )}m, dist(swapped)=${Math.round(distSwapped)}m`
-          );
+          
         });
       } catch (err) {
         console.warn("Debug sample geo-docs failed:", err.message);
@@ -758,13 +729,12 @@ exports.getNearbyJobsDebug = async (req, res) => {
 exports.deleteJob = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(id);
     const job = await Job.findById(id);
     if (!job) return res.status(404).json({ msg: "Job not found" });
     await Job.deleteOne({ _id: id });
     res.json({ msg: "Job deleted successfully" });
   } catch (err) {
-    console.log(err);
+    
     res.status(500).json({ msg: "Error deleting job", error: err.message });
   }
 };

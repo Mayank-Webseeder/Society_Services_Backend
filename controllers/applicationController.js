@@ -41,7 +41,7 @@ exports.applyToJob = async (req, res) => {
 		});
 
 		await application.save();
-		if (process.env.NODE_ENV !== "production") console.log("Saved application:", application);
+		if (process.env.NODE_ENV !== "production") 
 
 		res.status(201).json({ msg: "Applied with quotation", application });
 	} catch (err) {
@@ -77,7 +77,7 @@ exports.showInterestInJob = async (req, res) => {
 		});
 
 		await application.save();
-		if (process.env.NODE_ENV !== "production") console.log("Saved application:", application);
+		if (process.env.NODE_ENV !== "production") 
 
 		res.status(201).json({ msg: "Interest shown successfully", application });
 	} catch (err) {
@@ -266,7 +266,7 @@ exports.completejob=async(req,res)=>{
 		res.json({msg:"job marked completed successfully"})
 	}
 	catch(error){
-		console.log(error)
+		
 		res.status(500).send("error in completing job")
 	}
 }

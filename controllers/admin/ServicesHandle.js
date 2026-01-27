@@ -134,10 +134,7 @@ exports.deleteServices = async (req, res) => {
       (val) => typeof val === "string" && objectIdPattern.test(val)
     );
 
-    console.log("🗑 Deleting Services:", {
-      names: namesToDelete,
-      ids: idsToDelete,
-    });
+    
 
     const deletionResult = await Services.deleteMany({
       $or: [{ name: { $in: namesToDelete } }, { _id: { $in: idsToDelete } }],

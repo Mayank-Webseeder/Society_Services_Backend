@@ -62,7 +62,7 @@ exports.signupVendor = async (req, res) => {
 			msg: "Vendor registered successfully.",
 		});
 	} catch (err) {
-		console.log(err);
+		
 		res.status(500).json({ msg: "Server error", error: err.message });
 	}
 };
@@ -104,7 +104,7 @@ exports.signupVendor = async (req, res) => {
 
 
 exports.loginVendorUsingContact = async (req, res) => {
-		console.log('loginVendorUsingContact called', { path: req.path, method: req.method });
+		
 	try {
 		const { contactNumber, password } = req.body;
 		const vendor = await Vendor.findOne({ contactNumber });
@@ -128,7 +128,7 @@ exports.loginVendorUsingContact = async (req, res) => {
 		if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
 
 		const token = jwt.sign({ id: vendor._id, role: vendor.role }, process.env.JWT_SECRET);
-		// console.log(token);
+		
 		res.json({
 			authToken: token,
 			role: vendor.role,
@@ -137,7 +137,7 @@ exports.loginVendorUsingContact = async (req, res) => {
 			},
 		});
 	} catch (err) {
-		console.log(err);
+		
 		res.status(500).json({ msg: "Server error", error: err.message });
 	}
 };

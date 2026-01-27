@@ -59,7 +59,6 @@ const uploadHelpImage = (req, res, next) => {
 	// Construct file name and path
 	const fileName = `${Date.now()}-${name}.${extension}`;
 	const filePath = path.join(uploadsDirHelp, fileName);
-	console.log("Saving help image to:", filePath);
 
 	fs.writeFile(filePath, base64Data, "base64", (err) => {
 		if (err) {

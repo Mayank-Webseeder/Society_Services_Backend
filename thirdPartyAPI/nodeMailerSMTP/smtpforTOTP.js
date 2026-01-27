@@ -33,8 +33,6 @@ exports.sendOTP = async (vendorName, otp, vendorEmail, htmlpart = null) => {
   };
   try {
     const info = await transporter.sendMail(mailOptions);
-    console.log("Email sent:", info.response);
-    console.log("Message ID:", info.messageId);
     var retVal = true;
   } catch (error) {
     console.error("Error sending email/Saving OTP to database:", error);

@@ -74,27 +74,6 @@ router.post(
 	forgetPassword
 );
 
-//otp validation ENDS 
-
-
-
-// console.log("authenticate:", typeof authenticate);
-// console.log("authorizeRoles:", typeof authorizeRoles);
-// // Check the middleware returned by authorizeRoles when called with "vendor"
-// try {
-//   console.log("authorizeRoles('vendor'):", typeof authorizeRoles("vendor"));
-// } catch (e) {
-//   console.log("authorizeRoles('vendor') threw:", e && e.message);
-// }
-// console.log("upload:", upload);
-// console.log("upload.single:", typeof upload?.single);
-// // Check the middleware returned by upload.single when called with "file"
-// try {
-//   console.log("upload.single('file'):", typeof upload?.single?.("file"));
-// } catch (e) {
-//   console.log("upload.single('file') threw:", e && e.message);
-// }
-// console.log("createVendorProfile:", typeof createVendorProfile);
 
 
 router.put("/createProfile",authenticate,authorizeRoles("vendor"),upload.single("idProofFile"),uploadIDProof,createVendorProfile);

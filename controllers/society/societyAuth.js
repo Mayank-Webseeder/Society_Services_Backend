@@ -10,13 +10,11 @@ exports.signupSociety = async (req, res) => {
 	try {
 		const { societyname,contact, email, password, address, city, pincode, location,residentsCount } = req.body;
 		if (!societyname || !contact || !email || !password || !address || !city || !pincode || !location || !residentsCount) {
-			console.log("Missing fields in signupSociety:");
 			return res.status(400).json({ msg: "All fields are required" });
 		}
 		
 		const existing = await Society.findOne({ email });
 		if (existing){
-			console.log("Society already exists with email:", email);
 			return res.status(400).json({ msg: "Society already exists" });
 		}
 		const hashed = await bcrypt.hash(password, 10);
@@ -31,13 +29,13 @@ exports.signupSociety = async (req, res) => {
 			location,
 			residentsCount,
 		});
-		console.log("Saved Society:", newSociety);
+		
 		await newSociety.save();
 		//const token = jwt.sign({ id: newSociety._id, role: newSociety.role }, process.env.JWT_SECRET, { expiresIn: "24h" });
 		//res.status(201).json({ msg: "Society registered successfully", authToken: token });
 		res.status(201).json({ msg: "Society registered successfully"});
 	} catch (err) {
-		console.log(err);
+		
 		res.status(500).json({ msg: "Server error", error: err.message });
 	}
 };
@@ -46,7 +44,7 @@ exports.loginSociety = async (req, res) => {
   try {
 	const { email, password } = req.body;
 	if (!email || !password) {
-		console.log("Missing email or password in loginSociety:");
+		
 	  	return res.status(400).json({ msg: "Email and password are required" });
 	}
     
@@ -71,7 +69,7 @@ exports.loginSociety = async (req, res) => {
 
     res.json({ token, role: society.role });
   } catch (err) {
-	console.log(err);
+	
     res.status(500).json({ msg: "Server error", error: err.message });
   }
 };

@@ -21,10 +21,9 @@ exports.approveSociety = async (req, res) => {
     society.status = "Active";
     await society.save();
 
-    console.log("society approved");
+    
     res.status(200).json({ msg: "Society approved" });
   } catch (err) {
-    console.log(err);
     res
       .status(500)
       .json({ msg: "Error approving society", error: err.message });
@@ -45,10 +44,10 @@ exports.disapproveSociety = async (req, res) => {
 
     society.isApproved = false;
     await society.save();
-    console.log("society disapproved");
+    
     res.status(200).json({ msg: "Society disapproved" });
   } catch (err) {
-    console.log(err);
+    
     res
       .status(500)
       .json({ msg: "Error approving society", error: err.message });
@@ -73,7 +72,7 @@ exports.numofSociety = async (req, res) => {
     const data = await Society.countDocuments();
     res.status(200).json(data);
   } catch (error) {
-    console.log(error);
+    
     res.status(500).json({ msg: "error in geting data of society" });
   }
 };
@@ -86,7 +85,7 @@ exports.getPendingSocieties = async (req, res) => {
       pending,
     });
   } catch (err) {
-    console.log(err);
+  
     res.status(500).json({ msg: "Error fetching pending" });
   }
 };
@@ -166,7 +165,7 @@ exports.deletesociety = async (req, res) => {
     }
     res.status(200).json({ msg: "Society deleted successfully" });
   } catch (error) {
-    console.log(error);
+    
     res
       .status(500)
       .json({ msg: "Error deleting society", error: error.message });

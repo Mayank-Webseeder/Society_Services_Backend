@@ -9,4 +9,4 @@ const sig = crypto
   .update(`${orderId}|${paymentId}`)
   .digest("hex");
 
-console.log(sig);
+

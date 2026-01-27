@@ -54,7 +54,7 @@ const uploadProfilePicture = (req, res, next) => {
 	// const baseName = path.parse(name).name;
 	const fileName = `${Date.now()}-${name}.${extension}`;
 	const filePath = path.join(uploadsDirProfilePic, fileName);
-	console.log("Saving profile picture to:", filePath);
+	
 
 
 fs.writeFile(filePath, base64Data, "base64", (err) => {

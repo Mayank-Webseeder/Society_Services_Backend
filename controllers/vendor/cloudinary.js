@@ -4,7 +4,7 @@ dotenv.config();
 const cloudinary = require("cloudinary").v2;
 
 
-console.log("✅ cloudinary.js loaded");
+
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,

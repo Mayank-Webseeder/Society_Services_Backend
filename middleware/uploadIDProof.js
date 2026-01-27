@@ -22,7 +22,7 @@ module.exports = async (req, res, next) => {
     // Continue to the next middleware / controller
     next();
   } catch (error) {
-    console.log(error);
+    
     res.status(500).json({
       success: false,
       error: error.message,
