@@ -10,6 +10,7 @@ const adminRoutes = require("./routes/adminRoutes");
 const vendorRoutes = require("./routes/vendorRoutes");
 const societyRoutes = require("./routes/societyRoutes");
 const swaggerSpec = require("./swaggerOptions");
+
 dotenv.config();
 
 const app = express();

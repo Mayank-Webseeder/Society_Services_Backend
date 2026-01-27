@@ -144,3 +144,20 @@ exports.giveRating = async (req, res) => {
 		res.status(500).json({ msg: "Failed to submit rating", error: err.message });
 	}
 };
+
+exports.getSocietyProfile = async (req, res) => {
+  try {
+    const society = await Society.findById(req.user.id).select(
+      "buildingName username email contact address"
+    );
+
+    if (!society) {
+      return res.status(404).json({ msg: "Society not found" });
+    }
+
+    res.json({ society });
+  } catch (err) {
+    console.error("getSocietyProfile error:", err);
+    res.status(500).json({ msg: "Failed to fetch society profile" });
+  }
+};

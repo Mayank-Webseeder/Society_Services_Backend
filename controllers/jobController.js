@@ -847,8 +847,9 @@ exports.getSocietyDetails = async (req, res) => {
   try {
     const societyId = req.user.id;
     const society = await Society.findById(societyId).select(
-      "username buildingName email address profilePicture residentsCount location isApproved createdAt updatedAt"
-    );
+  "societyname email contact address city pincode residentsCount location isApproved createdAt updatedAt"
+);
+
 
     if (!society) return res.status(404).json({ msg: "Society not found" });
 
@@ -862,23 +863,21 @@ exports.getSocietyDetails = async (req, res) => {
     ).length;
 
     const response = {
-      id: society._id ?? "N/A",
-      username: society.username ?? "N/A",
-      name: society.buildingName ?? "N/A",
-      location: society.location?.default ?? "N/A",
-      address: society.address ?? "N/A",
-      email: society.email ?? "N/A",
-      residentsCount: society.residentsCount ?? "N/A",
-      profilePicture: society.profilePicture ?? "N/A",
-      totalJobsPosted,
-      activeJobsCount,
-      status: society.isApproved ? "Active" : "Pending",
-      isApproved: society.isApproved ?? false,
-      createdAt: society.createdAt ?? "N/A",
-      updatedAt: society.updatedAt ?? "N/A",
-    };
+  id: society._id,
+  name: society.societyname,         
+  email: society.email,
+  contact: society.contact,           
+  address: society.address,
+  city: society.city,
+  pincode: society.pincode,
+  residentsCount: society.residentsCount,
+  location: society.location?.default ?? "Not provided",
+  status: society.isApproved ? "Active" : "Pending",
+  createdAt: society.createdAt,
+  updatedAt: society.updatedAt,
+};
 
-    res.json({ society: response });
+   res.json({ society: response });
   } catch (err) {
     console.error("Error in getSocietyOverview:", err);
     res.status(500).json({
