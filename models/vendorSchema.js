@@ -61,17 +61,21 @@ const vendorSchema = new mongoose.Schema(
     ],
 
     location: {
-      type: {
-        type: String,
-        enum: ["Point"],
-      },
-      coordinates: {
-        type: [Number], // [longitude, latitude]
-      },
-      formattedAddress: {
-        type: String,
-      },
-    },
+  type: {
+    type: String,
+    enum: ["Point"],
+    default: "Point",
+  },
+  coordinates: {
+    type: [Number], // [longitude, latitude]
+    // required: true,
+  },
+  formattedAddress: {
+    type: String,
+    default: "Not Given",
+  },
+},
+
     paymentMethods: {
       UPI: {
         uPIID: { type: String, default: "Not Given" },

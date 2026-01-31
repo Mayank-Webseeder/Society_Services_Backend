@@ -74,7 +74,7 @@ const jobSchema = new mongoose.Schema({
 
   status: {
     type: String,
-    enum: ["New", "Completed", "Expired"],
+    enum: ["New", "In Progress", "Completed", "Expired"],
     default: "New",
   },
 
@@ -86,6 +86,12 @@ const jobSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now,
+  },
+
+  selectedVendor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Vendor",
+    default: null,
   },
 });
 

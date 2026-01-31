@@ -36,7 +36,7 @@ exports.applyToJob = async (req, res) => {
 			applicationType: "quotation",
 			message: message || "",
 			quotedpdf,
-			status: "approval pending",
+			status: "pending",
 			isQuotation: true,
 		});
 
@@ -71,7 +71,7 @@ exports.showInterestInJob = async (req, res) => {
 			job: job._id,
 			vendor: req.user.id,
 			applicationType: "interest",
-			status: "approval pending",
+			status: "pending",
 			isQuotation: false,
 			message: req.body?.message || "",
 		});
@@ -114,6 +114,7 @@ exports.getJobApplicants = async (req, res) => {
 		}
 		const result = applications.map((app) => ({
 			applicationId: app._id,
+			vendorId: app.vendor._id,
 			name: app.vendor.name,
 			email: app.vendor.email,
 			phone: app.vendor.phone,

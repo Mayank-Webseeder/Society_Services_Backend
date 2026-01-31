@@ -49,7 +49,7 @@ exports.createJob = async (req, res) => {
         googleMapLink: `https://maps.google.com/?q=${latitude},${longitude}`,
       },
 
-      // 🔥 REQUIRED for nearby search
+      // REQUIRED for nearby search
       geo: {
         type: "Point",
         coordinates: [longitude, latitude], // longitude FIRST
@@ -76,7 +76,52 @@ exports.createJob = async (req, res) => {
   }
 };
 
-// 🔹 GET ALL JOBS (for society dashboard)
+//  Society: Get all applicants for a job
+exports.getJobApplicants = async (req, res) => {
+  try {
+    const jobId = req.params.id;
+
+    // safety check: job exists & belongs to this society
+    const job = await Job.findById(jobId);
+    if (!job) {
+      return res.status(404).json({ msg: "Job not found" });
+    }
+
+    if (job.society.toString() !== req.user.id) {
+      return res.status(403).json({ msg: "Not authorized" });
+    }
+
+    const applications = await Application.find({ job: jobId })
+      .populate("vendor", "name email contactNumber")
+      .sort({ createdAt: -1 });
+
+    const formatted = applications.map((app) => ({
+      applicationId: app._id,
+      vendorId: app.vendor?._id,
+
+      name: app.vendor?.name || "-",
+      email: app.vendor?.email || "-",
+      contact: app.vendor?.contactNumber || "-",
+      appliedDate: app.createdAt,
+      applicationType: app.applicationType,
+      status: app.status,
+    }));
+
+    res.status(200).json({
+      success: true,
+      applicants: formatted,
+    });
+  } catch (err) {
+    console.error("getJobApplicants error:", err);
+    res.status(500).json({
+      success: false,
+      msg: "Failed to fetch job applicants",
+      error: err.message,
+    });
+  }
+};
+
+//  GET ALL JOBS (for society dashboard)
 exports.getAllJobs = async (req, res) => {
   try {
     const jobs = await Job.find({ society: req.user.id }).sort({
@@ -107,7 +152,6 @@ exports.getNearbyJobs = async (req, res) => {
 
     // We must fetch vendor coordinates from the DB only (no URL fallback)
     if (!vendor) {
-      
       return res
         .status(404)
         .json({ msg: "Vendor not found. Check your auth token." });
@@ -156,7 +200,7 @@ exports.getNearbyJobs = async (req, res) => {
         try {
           const raw = await Vendor.collection.findOne(
             { _id: vendor._id },
-            { projection: { "location.latitude": 1, "location.longitude": 1 } }
+            { projection: { "location.latitude": 1, "location.longitude": 1 } },
           );
           if (raw && raw.location) {
             topLat = raw.location.latitude;
@@ -166,7 +210,7 @@ exports.getNearbyJobs = async (req, res) => {
         } catch (err) {
           console.warn(
             "Failed to fetch raw vendor.location from collection:",
-            err.message
+            err.message,
           );
         }
       }
@@ -211,7 +255,7 @@ exports.getNearbyJobs = async (req, res) => {
             !isNaN(x.parsedLat) &&
             !isNaN(x.parsedLon) &&
             x.parsedLat !== 0 &&
-            x.parsedLon !== 0
+            x.parsedLon !== 0,
         );
         if (c) {
           chosen = c;
@@ -220,7 +264,7 @@ exports.getNearbyJobs = async (req, res) => {
       }
       if (!chosen) {
         const c = candidates.find(
-          (x) => !isNaN(x.parsedLat) && !isNaN(x.parsedLon)
+          (x) => !isNaN(x.parsedLat) && !isNaN(x.parsedLon),
         );
         if (c) chosen = c;
       }
@@ -228,14 +272,12 @@ exports.getNearbyJobs = async (req, res) => {
       if (chosen) {
         lat = chosen.parsedLat;
         lon = chosen.parsedLon;
-       
       } else {
         console.debug("No usable vendor.coords chosen from candidates");
       }
     }
 
     if (lat == null || lon == null) {
-      
       return res.status(400).json({
         msg: "Vendor location not set. Please update your profile with valid latitude & longitude.",
       });
@@ -258,8 +300,6 @@ exports.getNearbyJobs = async (req, res) => {
     const MAX_DISTANCE = Number(req.query.maxDistance) || 20000;
 
     let jobs = [];
-
-    
 
     try {
       const pipeline = [
@@ -310,7 +350,6 @@ exports.getNearbyJobs = async (req, res) => {
       ];
 
       jobs = await Job.aggregate(pipeline);
-      
     } catch (err) {
       console.warn("getNearbyJobs $geoNear failed:", err.message);
       jobs = [];
@@ -347,7 +386,7 @@ exports.getNearbyJobs = async (req, res) => {
     // Find candidate jobs that might not have geo field
     const degDelta = 0.2; // ~20km latitude delta
     const lonDelta = Math.abs(
-      degDelta / Math.max(Math.cos((lat * Math.PI) / 180), 0.0001)
+      degDelta / Math.max(Math.cos((lat * Math.PI) / 180), 0.0001),
     );
 
     const bboxFilter = {
@@ -362,7 +401,7 @@ exports.getNearbyJobs = async (req, res) => {
     const candidates = await Job.find(bboxFilter)
       .populate(
         "society",
-        "societyname email contact address city residentsCount"
+        "societyname email contact address city residentsCount",
       )
       .lean();
 
@@ -379,7 +418,7 @@ exports.getNearbyJobs = async (req, res) => {
           lat,
           lon,
           Number(job.location.latitude),
-          Number(job.location.longitude)
+          Number(job.location.longitude),
         );
         return { ...job, distance: d };
       })
@@ -403,7 +442,7 @@ exports.getNearbyJobs = async (req, res) => {
     });
 
     jobs = Array.from(mapById.values()).sort(
-      (a, b) => (a.distance || 0) - (b.distance || 0)
+      (a, b) => (a.distance || 0) - (b.distance || 0),
     );
 
     // Ensure final set respects MAX_DISTANCE
@@ -415,7 +454,7 @@ exports.getNearbyJobs = async (req, res) => {
 
     const jobIds = jobs.map((job) => job._id);
 
-    // 4️⃣ Vendor applications
+    // 4 Vendor applications
     const vendorApplications = await Application.find({
       vendor: vendorId,
       job: { $in: jobIds },
@@ -511,8 +550,6 @@ exports.getNearbyJobsDebug = async (req, res) => {
         .json({ msg: "Provide numeric lat and lon query params" });
     }
 
-    
-
     // Run geoNear agg
     const match = { isActive: true, status: { $ne: "Expired" } };
     if (quotationRequired === "true") match.quotationRequired = true;
@@ -551,7 +588,6 @@ exports.getNearbyJobsDebug = async (req, res) => {
         },
       ];
       jobs = await Job.aggregate(pipeline);
-      
     } catch (err) {
       console.warn("Debug $geoNear failed:", err.message);
       jobs = [];
@@ -565,7 +601,6 @@ exports.getNearbyJobsDebug = async (req, res) => {
       const locCount = await Job.countDocuments({
         "location.latitude": { $exists: true },
       });
-      
     } catch (err) {
       console.warn("Debug counts failed:", err.message);
     }
@@ -587,7 +622,7 @@ exports.getNearbyJobsDebug = async (req, res) => {
 
     const degDelta = 0.3;
     const lonDelta = Math.abs(
-      degDelta / Math.max(Math.cos((lat * Math.PI) / 180), 0.0001)
+      degDelta / Math.max(Math.cos((lat * Math.PI) / 180), 0.0001),
     );
 
     const bboxFilter = {
@@ -611,13 +646,11 @@ exports.getNearbyJobsDebug = async (req, res) => {
           lat,
           lon,
           Number(job.location.latitude),
-          Number(job.location.longitude)
+          Number(job.location.longitude),
         );
         return { ...job, distance: d };
       })
       .filter((j) => j && j.distance <= MAX_DISTANCE);
-
-    
 
     // If both sources are empty, run an expanded $geoNear (no maxDistance limit) to see if any jobs are near at all
     if ((jobs.length === 0 || !jobs) && candidatesWithin.length === 0) {
@@ -647,7 +680,6 @@ exports.getNearbyJobsDebug = async (req, res) => {
         })
           .limit(5)
           .lean();
-        
 
         const haversine = (lat1, lon1, lat2, lon2) => {
           const toRad = Math.PI / 180;
@@ -671,8 +703,6 @@ exports.getNearbyJobsDebug = async (req, res) => {
 
           const distCorrect = haversine(lat, lon, docLat, docLon);
           const distSwapped = haversine(lat, lon, docLon, docLat);
-
-          
         });
       } catch (err) {
         console.warn("Debug sample geo-docs failed:", err.message);
@@ -692,7 +722,7 @@ exports.getNearbyJobsDebug = async (req, res) => {
     });
 
     const results = Array.from(mapById.values()).sort(
-      (a, b) => (a.distance || 0) - (b.distance || 0)
+      (a, b) => (a.distance || 0) - (b.distance || 0),
     );
 
     // Optionally attach application status if vendorId provided
@@ -710,7 +740,7 @@ exports.getNearbyJobsDebug = async (req, res) => {
         };
       });
       results.forEach(
-        (r) => (r.applicationStatus = statusMap[String(r._id)] || null)
+        (r) => (r.applicationStatus = statusMap[String(r._id)] || null),
       );
     }
 
@@ -718,7 +748,7 @@ exports.getNearbyJobsDebug = async (req, res) => {
       results.map((r) => ({
         ...r,
         distanceKm: r.distance ? Number((r.distance / 1000).toFixed(2)) : null,
-      }))
+      })),
     );
   } catch (err) {
     console.error("Error in getNearbyJobsDebug:", err);
@@ -734,7 +764,6 @@ exports.deleteJob = async (req, res) => {
     await Job.deleteOne({ _id: id });
     res.json({ msg: "Job deleted successfully" });
   } catch (err) {
-    
     res.status(500).json({ msg: "Error deleting job", error: err.message });
   }
 };
@@ -742,15 +771,21 @@ exports.deleteJob = async (req, res) => {
 // 3. Get Single Job by ID
 exports.getJobById = async (req, res) => {
   try {
-    const job = await Job.findById(req.params.id).populate(
-      "society",
-      "name email"
-    );
-    if (!job) return res.status(404).json({ msg: "Job not found" });
+    const job = await Job.findById(req.params.id)
+      .populate("society", "societyname email contact")
+      .populate("selectedVendor", "name email contact");
+
+    if (!job) {
+      return res.status(404).json({ msg: "Job not found" });
+    }
 
     res.json(job);
   } catch (err) {
-    res.status(500).json({ msg: "Error fetching job", error: err.message });
+    console.error("Error fetching job:", err);
+    res.status(500).json({
+      msg: "Error fetching job",
+      error: err.message,
+    });
   }
 };
 
@@ -817,37 +852,36 @@ exports.getSocietyDetails = async (req, res) => {
   try {
     const societyId = req.user.id;
     const society = await Society.findById(societyId).select(
-  "societyname email contact address city pincode residentsCount location isApproved createdAt updatedAt"
-);
-
+      "societyname email contact address city pincode residentsCount location isApproved createdAt updatedAt",
+    );
 
     if (!society) return res.status(404).json({ msg: "Society not found" });
 
     const jobs = await Job.find({ society: societyId });
 
     const totalJobsPosted = jobs.filter((job) =>
-      ["New", "Completed", "Expired"].includes(job.status)
+      ["New", "Completed", "Expired"].includes(job.status),
     ).length;
     const activeJobsCount = jobs.filter(
-      (job) => job.status === "Completed"
+      (job) => job.status === "Completed",
     ).length;
 
     const response = {
-  id: society._id,
-  name: society.societyname,         
-  email: society.email,
-  contact: society.contact,           
-  address: society.address,
-  city: society.city,
-  pincode: society.pincode,
-  residentsCount: society.residentsCount,
-  location: society.location?.default ?? "Not provided",
-  status: society.isApproved ? "Active" : "Pending",
-  createdAt: society.createdAt,
-  updatedAt: society.updatedAt,
-};
+      id: society._id,
+      name: society.societyname,
+      email: society.email,
+      contact: society.contact,
+      address: society.address,
+      city: society.city,
+      pincode: society.pincode,
+      residentsCount: society.residentsCount,
+      location: society.location?.default ?? "Not provided",
+      status: society.isApproved ? "Active" : "Pending",
+      createdAt: society.createdAt,
+      updatedAt: society.updatedAt,
+    };
 
-   res.json({ society: response });
+    res.json({ society: response });
   } catch (err) {
     console.error("Error in getSocietyOverview:", err);
     res.status(500).json({
@@ -865,7 +899,7 @@ exports.getActiveSocientyJobs = async (req, res) => {
       society: societyId,
       status: "Completed",
     }).select(
-      "title type requiredExperience details contactNumber location offeredPrice scheduledFor quotationRequired completedAt"
+      "title type requiredExperience details contactNumber location offeredPrice scheduledFor quotationRequired completedAt",
     );
 
     if (!activeJobs || activeJobs.length === 0) {
@@ -902,6 +936,129 @@ exports.getActiveSocientyJobs = async (req, res) => {
     res.status(500).json({
       msg: "Failed to fetch active jobs",
       error: err.message,
+    });
+  }
+};
+
+// Society assigns vendor to job
+exports.assignVendorToJob = async (req, res) => {
+  try {
+    console.log("=== ASSIGN VENDOR DEBUG ===");
+    console.log("req.params:", req.params);
+    console.log("req.body:", req.body);
+    console.log("req.user:", req.user);
+
+    const { jobId } = req.params;
+    const { vendorId } = req.body;
+
+    if (!vendorId) {
+      return res.status(400).json({ msg: "vendorId is required" });
+    }
+
+    // 🔹 Find job
+    const job = await Job.findById(jobId);
+    if (!job) {
+      return res.status(404).json({ msg: "Job not found" });
+    }
+
+    // 🔹 Only job owner society can assign
+    if (job.society.toString() !== req.user.id) {
+      return res.status(403).json({ msg: "Unauthorized" });
+    }
+
+    // 🔹 Find vendor application
+    const application = await Application.findOne({
+      job: jobId,
+      vendor: vendorId,
+    });
+
+    if (!application) {
+      return res
+        .status(400)
+        .json({ msg: "Vendor has not applied for this job" });
+    }
+
+    // 🔥 FIX: ensure society is present (THIS SOLVES YOUR ERROR)
+    if (!application.society) {
+      application.society = job.society;
+    }
+
+    // 🔹 Accept selected vendor
+    application.status = "accepted";
+    await application.save();
+
+    // 🔹 Reject other vendors
+    await Application.updateMany(
+      { job: jobId, vendor: { $ne: vendorId } },
+      { $set: { status: "rejected" } },
+    );
+
+    // 🔹 Assign vendor to job
+    job.selectedVendor = vendorId;
+    job.status = "In Progress";
+    await job.save();
+
+    // 🔹 Populate selected vendor for frontend
+    const populatedJob = await Job.findById(jobId).populate("selectedVendor");
+
+    return res.json({
+      msg: "Vendor assigned successfully",
+      job: populatedJob,
+    });
+  } catch (error) {
+    console.error("Assign vendor error:", error);
+    return res.status(500).json({
+      msg: "Failed to assign vendor",
+      error: error.message,
+    });
+  }
+};
+
+// Vendor applies to a job
+exports.applyJob = async (req, res) => {
+  try {
+    if (req.user.role !== "vendor") {
+      return res.status(403).json({ msg: "Only vendors can apply" });
+    }
+
+    const { jobId } = req.params;
+    const vendorId = req.user.id;
+
+    const job = await Job.findById(jobId);
+    if (!job) {
+      return res.status(404).json({ msg: "Job not found" });
+    }
+
+    // Prevent duplicate application
+    const alreadyApplied = await Application.findOne({
+      job: jobId,
+      vendor: vendorId,
+    });
+
+    if (alreadyApplied) {
+      return res.status(400).json({ msg: "Already applied to this job" });
+    }
+
+    // ✅ THIS IS THE MAIN FIX
+    const application = new Application({
+      job: jobId,
+      vendor: vendorId,
+      society: job.society, // 🔥 REQUIRED FIELD (ROOT FIX)
+      status: "applied",
+      applicationType: "normal",
+    });
+
+    await application.save();
+
+    res.status(201).json({
+      msg: "Applied successfully",
+      application,
+    });
+  } catch (error) {
+    console.error("Apply job error:", error);
+    res.status(500).json({
+      msg: "Failed to apply for job",
+      error: error.message,
     });
   }
 };
