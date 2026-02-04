@@ -24,7 +24,7 @@ const vendorSchema = new mongoose.Schema(
       state: { type: String, default: "Not Given" },
       pincode: { type: String, default: "000000" },
       formattedAddress: { type: String, default: "Not Given" },
-    },
+    }, 
     averageRating: {
       type: Number,
       default: 0,
