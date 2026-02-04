@@ -1049,6 +1049,14 @@ exports.applyJob = async (req, res) => {
     });
 
     await application.save();
+    await Notification.create({
+      user: job.society,
+      role: "society",
+      title: "New Job Application",
+      message: `A vendor has applied for your job: ${job.title}`,
+      type: "JOB_APPLIED",
+      referenceId: job._id,
+    });
 
     res.status(201).json({
       msg: "Applied successfully",

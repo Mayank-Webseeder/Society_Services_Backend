@@ -42,22 +42,24 @@ exports.signupSociety = async (req, res) => {
 
 exports.loginSociety = async (req, res) => {
   try {
-	const { email, password } = req.body;
-	if (!email || !password) {
-		
-	  	return res.status(400).json({ msg: "Email and password are required" });
-	}
-    
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ msg: "Email and password are required" });
+    }
+
     const society = await Society.findOne({ email });
-    if (!society) return res.status(400).json({ msg: "Invalid credentials12" });
+    if (!society) {
+      return res.status(400).json({ msg: "Invalid credentials" });
+    }
 
     const isMatch = await bcrypt.compare(password, society.password);
-    if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
+    if (!isMatch) {
+      return res.status(400).json({ msg: "Invalid credentials" });
+    }
 
-    
     if (!society.isApproved) {
       return res.status(403).json({
-        msg: "Your account is awaiting admin approval. Please try again later.",
+        msg: "Your account is awaiting admin approval.",
       });
     }
 
@@ -67,9 +69,16 @@ exports.loginSociety = async (req, res) => {
       { expiresIn: "2h" }
     );
 
-    res.json({ token, role: society.role });
+    res.json({
+      token,
+      role: society.role,
+      society: {
+        _id: society._id,
+        societyname: society.societyname,
+        location: society.location, 
+      },
+    });
   } catch (err) {
-	
     res.status(500).json({ msg: "Server error", error: err.message });
   }
 };
