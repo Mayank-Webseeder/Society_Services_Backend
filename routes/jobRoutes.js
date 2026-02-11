@@ -44,4 +44,5 @@ router.post("/expire-old", expireOldJobs);
 
 router.delete("/delete/:id", authMiddleware, authorizeRoles("society"), deleteJob);
 
+
 module.exports = router;

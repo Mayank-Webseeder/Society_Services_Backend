@@ -124,9 +124,12 @@ exports.getJobApplicants = async (req, res) => {
 //  GET ALL JOBS (for society dashboard)
 exports.getAllJobs = async (req, res) => {
   try {
-    const jobs = await Job.find({ society: req.user.id }).sort({
-      createdAt: -1,
-    });
+    const jobs = await Job.find()
+      .populate({
+        path: "society",
+        select: "societyname email address",
+      })
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -1070,3 +1073,22 @@ exports.applyJob = async (req, res) => {
     });
   }
 };
+
+
+// 🔥 ADMIN: Get all jobs with society name
+exports.getAllJobsAdmin = async (req, res) => {
+  try {
+    const jobs = await Job.find()
+      .populate("society")   // 🔥 FULL populate
+      .sort({ createdAt: -1 });
+
+    res.status(200).json(jobs);
+  } catch (error) {
+    console.error("Admin get all jobs error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch jobs",
+    });
+  }
+};
+

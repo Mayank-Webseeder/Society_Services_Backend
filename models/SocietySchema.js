@@ -93,9 +93,13 @@ const societySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// ✅ GEO INDEX (MANDATORY)
+// GEO INDEX 
 societySchema.index({ location: "2dsphere" });
 
 module.exports =
   mongoose.models.Society ||
   mongoose.model("Society", societySchema);
+
+
+  // module.exports = mongoose.model("Society", societySchema); 
+
